@@ -1,115 +1,89 @@
-# env-paths
+# has-flag [![Build Status](https://travis-ci.org/sindresorhus/has-flag.svg?branch=master)](https://travis-ci.org/sindresorhus/has-flag)
 
-> Get paths for storing things like data, config, cache, etc
+> Check if [`argv`](https://nodejs.org/docs/latest/api/process.html#process_process_argv) has a specific flag
 
-Uses the correct OS-specific paths. Most developers get this wrong.
-
-
-## Install
-
-```
-$ npm install env-paths
-```
-
-
-## Usage
-
-```js
-const envPaths = require('env-paths');
-
-const paths = envPaths('MyApp');
-
-paths.data;
-//=> '/home/sindresorhus/.local/share/MyApp-nodejs'
-
-paths.config
-//=> '/home/sindresorhus/.config/MyApp-nodejs'
-```
-
-
-## API
-
-### paths = envPaths(name, options?)
-
-Note: It only generates the path strings. It doesn't create the directories for you. You could use [`make-dir`](https://github.com/sindresorhus/make-dir) to create the directories.
-
-#### name
-
-Type: `string`
-
-Name of your project. Used to generate the paths.
-
-#### options
-
-Type: `object`
-
-##### suffix
-
-Type: `string`<br>
-Default: `'nodejs'`
-
-**Don't use this option unless you really have to!**<br>
-Suffix appended to the project name to avoid name conflicts with native
-apps. Pass an empty string to disable it.
-
-### paths.data
-
-Directory for data files.
-
-Example locations (with the default `nodejs` [suffix](#suffix)):
-
-- macOS: `~/Library/Application Support/MyApp-nodejs`
-- Windows: `%LOCALAPPDATA%\MyApp-nodejs\Data` (for example, `C:\Users\USERNAME\AppData\Local\MyApp-nodejs\Data`)
-- Linux: `~/.local/share/MyApp-nodejs` (or `$XDG_DATA_HOME/MyApp-nodejs`)
-
-### paths.config
-
-Directory for config files.
-
-Example locations (with the default `nodejs` [suffix](#suffix)):
-
-- macOS: `~/Library/Preferences/MyApp-nodejs`
-- Windows: `%APPDATA%\MyApp-nodejs\Config` (for example, `C:\Users\USERNAME\AppData\Roaming\MyApp-nodejs\Config`)
-- Linux: `~/.config/MyApp-nodejs` (or `$XDG_CONFIG_HOME/MyApp-nodejs`)
-
-### paths.cache
-
-Directory for non-essential data files.
-
-Example locations (with the default `nodejs` [suffix](#suffix)):
-
-- macOS: `~/Library/Caches/MyApp-nodejs`
-- Windows: `%LOCALAPPDATA%\MyApp-nodejs\Cache` (for example, `C:\Users\USERNAME\AppData\Local\MyApp-nodejs\Cache`)
-- Linux: `~/.cache/MyApp-nodejs` (or `$XDG_CACHE_HOME/MyApp-nodejs`)
-
-### paths.log
-
-Directory for log files.
-
-Example locations (with the default `nodejs` [suffix](#suffix)):
-
-- macOS: `~/Library/Logs/MyApp-nodejs`
-- Windows: `%LOCALAPPDATA%\MyApp-nodejs\Log` (for example, `C:\Users\USERNAME\AppData\Local\MyApp-nodejs\Log`)
-- Linux: `~/.local/state/MyApp-nodejs` (or `$XDG_STATE_HOME/MyApp-nodejs`)
-
-### paths.temp
-
-Directory for temporary files.
-
-Example locations (with the default `nodejs` [suffix](#suffix)):
-
-- macOS: `/var/folders/jf/f2twvvvs5jl_m49tf034ffpw0000gn/T/MyApp-nodejs`
-- Windows: `%LOCALAPPDATA%\Temp\MyApp-nodejs` (for example, `C:\Users\USERNAME\AppData\Local\Temp\MyApp-nodejs`)
-- Linux: `/tmp/USERNAME/MyApp-nodejs`
+Correctly stops looking after an `--` argument terminator.
 
 ---
 
 <div align="center">
 	<b>
-		<a href="https://tidelift.com/subscription/pkg/npm-env-paths?utm_source=npm-env-paths&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
+		<a href="https://tidelift.com/subscription/pkg/npm-has-flag?utm_source=npm-has-flag&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
 	</b>
 	<br>
 	<sub>
 		Tidelift helps make open source sustainable for maintainers while giving companies<br>assurances about security, maintenance, and licensing for their dependencies.
 	</sub>
 </div>
+
+---
+
+
+## Install
+
+```
+$ npm install has-flag
+```
+
+
+## Usage
+
+```js
+// foo.js
+const hasFlag = require('has-flag');
+
+hasFlag('unicorn');
+//=> true
+
+hasFlag('--unicorn');
+//=> true
+
+hasFlag('f');
+//=> true
+
+hasFlag('-f');
+//=> true
+
+hasFlag('foo=bar');
+//=> true
+
+hasFlag('foo');
+//=> false
+
+hasFlag('rainbow');
+//=> false
+```
+
+```
+$ node foo.js -f --unicorn --foo=bar -- --rainbow
+```
+
+
+## API
+
+### hasFlag(flag, [argv])
+
+Returns a boolean for whether the flag exists.
+
+#### flag
+
+Type: `string`
+
+CLI flag to look for. The `--` prefix is optional.
+
+#### argv
+
+Type: `string[]`<br>
+Default: `process.argv`
+
+CLI arguments.
+
+
+## Security
+
+To report a security vulnerability, please use the [Tidelift security contact](https://tidelift.com/security). Tidelift will coordinate the fix and disclosure.
+
+
+## License
+
+MIT © [Sindre Sorhus](https://sindresorhus.com)
