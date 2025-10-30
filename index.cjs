@@ -1,1 +1,595 @@
-"use strict";var F=Object.create;var u=Object.defineProperty;var O=Object.getOwnPropertyDescriptor;var C=Object.getOwnPropertyNames;var L=Object.getPrototypeOf,k=Object.prototype.hasOwnProperty;var A=(s,e)=>{for(var t in e)u(s,t,{get:e[t],enumerable:!0})},y=(s,e,t,r)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of C(e))!k.call(s,i)&&i!==t&&u(s,i,{get:()=>e[i],enumerable:!(r=O(e,i))||r.enumerable});return s};var g=(s,e,t)=>(t=s!=null?F(L(s)):{},y(e||!s||!s.__esModule?u(t,"default",{value:s,enumerable:!0}):t,s)),P=s=>y(u({},"__esModule",{value:!0}),s);var T={};A(T,{FlatCache:()=>l,FlatCacheEvents:()=>S,clearAll:()=>E,clearCacheById:()=>x,create:()=>I,createFromFile:()=>R,default:()=>p});module.exports=P(T);var a=g(require("fs"),1),o=g(require("path"),1),v=require("cacheable"),m=require("flatted"),b=require("hookified"),S=(h=>(h.SAVE="save",h.LOAD="load",h.DELETE="delete",h.CLEAR="clear",h.DESTROY="destroy",h.ERROR="error",h.EXPIRED="expired",h))(S||{}),l=class extends b.Hookified{_cache=new v.CacheableMemory;_cacheDir=".cache";_cacheId="cache1";_persistInterval=0;_persistTimer;_changesSinceLastSave=!1;_parse=m.parse;_stringify=m.stringify;constructor(e){super(),e&&(this._cache=new v.CacheableMemory({ttl:e.ttl,useClone:e.useClone,lruSize:e.lruSize,checkInterval:e.expirationInterval})),e?.cacheDir&&(this._cacheDir=e.cacheDir),e?.cacheId&&(this._cacheId=e.cacheId),e?.persistInterval&&(this._persistInterval=e.persistInterval,this.startAutoPersist()),e?.deserialize&&(this._parse=e.deserialize),e?.serialize&&(this._stringify=e.serialize)}get cache(){return this._cache}get cacheDir(){return this._cacheDir}set cacheDir(e){this._cacheDir=e}get cacheId(){return this._cacheId}set cacheId(e){this._cacheId=e}get changesSinceLastSave(){return this._changesSinceLastSave}get persistInterval(){return this._persistInterval}set persistInterval(e){this._persistInterval=e}load(e,t){try{let r=o.default.resolve(`${t??this._cacheDir}/${e??this._cacheId}`);this.loadFile(r),this.emit("load")}catch(r){this.emit("error",r)}}loadFile(e){if(a.default.existsSync(e)){let t=a.default.readFileSync(e,"utf8"),r=this._parse(t);if(Array.isArray(r))for(let i of r)i&&typeof i=="object"&&"key"in i&&(i.expires?this._cache.set(i.key,i.value,{expire:i.expires}):i.timestamp?this._cache.set(i.key,i.value,{expire:i.timestamp}):this._cache.set(i.key,i.value));else for(let i of Object.keys(r)){let c=r[i];c&&typeof c=="object"&&"key"in c?this._cache.set(c.key,c.value,{expire:c.expires}):c&&typeof c=="object"&&c.timestamp?this._cache.set(i,c,{expire:c.timestamp}):this._cache.set(i,c)}this._changesSinceLastSave=!0}}loadFileStream(e,t,r,i){if(a.default.existsSync(e)){let D=a.default.statSync(e).size,h=0,d="",f=a.default.createReadStream(e,{encoding:"utf8"});f.on("data",n=>{h+=n.length,d+=n,t(h,D)}),f.on("end",()=>{let n=this._parse(d);for(let _ of Object.keys(n))this._cache.set(n[_].key,n[_].value,{expire:n[_].expires});this._changesSinceLastSave=!0,r()}),f.on("error",n=>{this.emit("error",n),i&&i(n)})}else{let c=new Error(`Cache file ${e} does not exist`);this.emit("error",c),i&&i(c)}}all(){let e={},t=[...this._cache.items];for(let r of t)e[r.key]=r.value;return e}get items(){return[...this._cache.items]}get cacheFilePath(){return o.default.resolve(`${this._cacheDir}/${this._cacheId}`)}get cacheDirPath(){return o.default.resolve(this._cacheDir)}keys(){return[...this._cache.keys]}setKey(e,t,r){this.set(e,t,r)}set(e,t,r){this._cache.set(e,t,r),this._changesSinceLastSave=!0}removeKey(e){this.delete(e)}delete(e){this._cache.delete(e),this._changesSinceLastSave=!0,this.emit("delete",e)}getKey(e){return this.get(e)}get(e){return this._cache.get(e)}clear(){try{this._cache.clear(),this._changesSinceLastSave=!0,this.save(),this.emit("clear")}catch(e){this.emit("error",e)}}save(e=!1){try{if(this._changesSinceLastSave||e){let t=this.cacheFilePath,r=[...this._cache.items],i=this._stringify(r);a.default.existsSync(this._cacheDir)||a.default.mkdirSync(this._cacheDir,{recursive:!0}),a.default.writeFileSync(t,i),this._changesSinceLastSave=!1,this.emit("save")}}catch(t){this.emit("error",t)}}removeCacheFile(){try{if(a.default.existsSync(this.cacheFilePath))return a.default.rmSync(this.cacheFilePath),!0}catch(e){this.emit("error",e)}return!1}destroy(e=!1){try{this._cache.clear(),this.stopAutoPersist(),e?a.default.rmSync(this.cacheDirPath,{recursive:!0,force:!0}):a.default.rmSync(this.cacheFilePath,{recursive:!0,force:!0}),this._changesSinceLastSave=!1,this.emit("destroy")}catch(t){this.emit("error",t)}}startAutoPersist(){this._persistInterval>0&&(this._persistTimer&&(clearInterval(this._persistTimer),this._persistTimer=void 0),this._persistTimer=setInterval(()=>{this.save()},this._persistInterval))}stopAutoPersist(){this._persistTimer&&(clearInterval(this._persistTimer),this._persistTimer=void 0)}},p=class{static create=I;static createFromFile=R;static clearCacheById=x;static clearAll=E};function I(s){let e=new l(s);return e.load(),e}function R(s,e){let t=new l(e);return t.loadFile(s),t}function x(s,e){new l({cacheId:s,cacheDir:e}).destroy()}function E(s){a.default.rmSync(s??".cache",{recursive:!0,force:!0})}0&&(module.exports={FlatCache,FlatCacheEvents,clearAll,clearCacheById,create,createFromFile});
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  Eventified: () => Eventified,
+  Hookified: () => Hookified
+});
+module.exports = __toCommonJS(index_exports);
+
+// src/eventified.ts
+var Eventified = class {
+  _eventListeners;
+  _maxListeners;
+  _logger;
+  _throwOnEmitError = false;
+  constructor(options) {
+    this._eventListeners = /* @__PURE__ */ new Map();
+    this._maxListeners = 100;
+    this._logger = options?.logger;
+    if (options?.throwOnEmitError !== void 0) {
+      this._throwOnEmitError = options.throwOnEmitError;
+    }
+  }
+  /**
+   * Gets the logger
+   * @returns {Logger}
+   */
+  get logger() {
+    return this._logger;
+  }
+  /**
+   * Sets the logger
+   * @param {Logger} logger
+   */
+  set logger(logger) {
+    this._logger = logger;
+  }
+  /**
+   * Gets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
+   * @returns {boolean}
+   */
+  get throwOnEmitError() {
+    return this._throwOnEmitError;
+  }
+  /**
+   * Sets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
+   * @param {boolean} value
+   */
+  set throwOnEmitError(value) {
+    this._throwOnEmitError = value;
+  }
+  /**
+   * Adds a handler function for a specific event that will run only once
+   * @param {string | symbol} eventName
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  once(eventName, listener) {
+    const onceListener = (...arguments_) => {
+      this.off(eventName, onceListener);
+      listener(...arguments_);
+    };
+    this.on(eventName, onceListener);
+    return this;
+  }
+  /**
+   * Gets the number of listeners for a specific event. If no event is provided, it returns the total number of listeners
+   * @param {string} eventName The event name. Not required
+   * @returns {number} The number of listeners
+   */
+  listenerCount(eventName) {
+    if (eventName === void 0) {
+      return this.getAllListeners().length;
+    }
+    const listeners = this._eventListeners.get(eventName);
+    return listeners ? listeners.length : 0;
+  }
+  /**
+   * Gets an array of event names
+   * @returns {Array<string | symbol>} An array of event names
+   */
+  eventNames() {
+    return [...this._eventListeners.keys()];
+  }
+  /**
+   * Gets an array of listeners for a specific event. If no event is provided, it returns all listeners
+   * @param {string} [event] (Optional) The event name
+   * @returns {EventListener[]} An array of listeners
+   */
+  rawListeners(event) {
+    if (event === void 0) {
+      return this.getAllListeners();
+    }
+    return this._eventListeners.get(event) ?? [];
+  }
+  /**
+   * Prepends a listener to the beginning of the listeners array for the specified event
+   * @param {string | symbol} eventName
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  prependListener(eventName, listener) {
+    const listeners = this._eventListeners.get(eventName) ?? [];
+    listeners.unshift(listener);
+    this._eventListeners.set(eventName, listeners);
+    return this;
+  }
+  /**
+   * Prepends a one-time listener to the beginning of the listeners array for the specified event
+   * @param {string | symbol} eventName
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  prependOnceListener(eventName, listener) {
+    const onceListener = (...arguments_) => {
+      this.off(eventName, onceListener);
+      listener(...arguments_);
+    };
+    this.prependListener(eventName, onceListener);
+    return this;
+  }
+  /**
+   * Gets the maximum number of listeners that can be added for a single event
+   * @returns {number} The maximum number of listeners
+   */
+  maxListeners() {
+    return this._maxListeners;
+  }
+  /**
+   * Adds a listener for a specific event. It is an alias for the on() method
+   * @param {string | symbol} event
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  addListener(event, listener) {
+    this.on(event, listener);
+    return this;
+  }
+  /**
+   * Adds a listener for a specific event
+   * @param {string | symbol} event
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  on(event, listener) {
+    if (!this._eventListeners.has(event)) {
+      this._eventListeners.set(event, []);
+    }
+    const listeners = this._eventListeners.get(event);
+    if (listeners) {
+      if (listeners.length >= this._maxListeners) {
+        console.warn(
+          `MaxListenersExceededWarning: Possible event memory leak detected. ${listeners.length + 1} ${event} listeners added. Use setMaxListeners() to increase limit.`
+        );
+      }
+      listeners.push(listener);
+    }
+    return this;
+  }
+  /**
+   * Removes a listener for a specific event. It is an alias for the off() method
+   * @param {string | symbol} event
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  removeListener(event, listener) {
+    this.off(event, listener);
+    return this;
+  }
+  /**
+   * Removes a listener for a specific event
+   * @param {string | symbol} event
+   * @param {EventListener} listener
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  off(event, listener) {
+    const listeners = this._eventListeners.get(event) ?? [];
+    const index = listeners.indexOf(listener);
+    if (index !== -1) {
+      listeners.splice(index, 1);
+    }
+    if (listeners.length === 0) {
+      this._eventListeners.delete(event);
+    }
+    return this;
+  }
+  /**
+   * Calls all listeners for a specific event
+   * @param {string | symbol} event
+   * @param arguments_ The arguments to pass to the listeners
+   * @returns {boolean} Returns true if the event had listeners, false otherwise
+   */
+  emit(event, ...arguments_) {
+    let result = false;
+    const listeners = this._eventListeners.get(event);
+    if (listeners && listeners.length > 0) {
+      for (const listener of listeners) {
+        listener(...arguments_);
+        result = true;
+      }
+    }
+    if (event === "error") {
+      const error = arguments_[0] instanceof Error ? arguments_[0] : new Error(`${arguments_[0]}`);
+      if (this._throwOnEmitError && !result) {
+        throw error;
+      }
+    }
+    return result;
+  }
+  /**
+   * Gets all listeners for a specific event. If no event is provided, it returns all listeners
+   * @param {string} [event] (Optional) The event name
+   * @returns {EventListener[]} An array of listeners
+   */
+  listeners(event) {
+    return this._eventListeners.get(event) ?? [];
+  }
+  /**
+   * Removes all listeners for a specific event. If no event is provided, it removes all listeners
+   * @param {string} [event] (Optional) The event name
+   * @returns {IEventEmitter} returns the instance of the class for chaining
+   */
+  removeAllListeners(event) {
+    if (event !== void 0) {
+      this._eventListeners.delete(event);
+    } else {
+      this._eventListeners.clear();
+    }
+    return this;
+  }
+  /**
+   * Sets the maximum number of listeners that can be added for a single event
+   * @param {number} n The maximum number of listeners
+   * @returns {void}
+   */
+  setMaxListeners(n) {
+    this._maxListeners = n;
+    for (const listeners of this._eventListeners.values()) {
+      if (listeners.length > n) {
+        listeners.splice(n);
+      }
+    }
+  }
+  /**
+   * Gets all listeners
+   * @returns {EventListener[]} An array of listeners
+   */
+  getAllListeners() {
+    let result = [];
+    for (const listeners of this._eventListeners.values()) {
+      result = [...result, ...listeners];
+    }
+    return result;
+  }
+};
+
+// src/index.ts
+var Hookified = class extends Eventified {
+  _hooks;
+  _throwHookErrors = false;
+  _enforceBeforeAfter = false;
+  _deprecatedHooks;
+  _allowDeprecated = true;
+  constructor(options) {
+    super({ logger: options?.logger });
+    this._hooks = /* @__PURE__ */ new Map();
+    this._deprecatedHooks = options?.deprecatedHooks ? new Map(options.deprecatedHooks) : /* @__PURE__ */ new Map();
+    if (options?.throwHookErrors !== void 0) {
+      this._throwHookErrors = options.throwHookErrors;
+    }
+    if (options?.enforceBeforeAfter !== void 0) {
+      this._enforceBeforeAfter = options.enforceBeforeAfter;
+    }
+    if (options?.allowDeprecated !== void 0) {
+      this._allowDeprecated = options.allowDeprecated;
+    }
+  }
+  /**
+   * Gets all hooks
+   * @returns {Map<string, Hook[]>}
+   */
+  get hooks() {
+    return this._hooks;
+  }
+  /**
+   * Gets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
+   * @returns {boolean}
+   */
+  get throwHookErrors() {
+    return this._throwHookErrors;
+  }
+  /**
+   * Sets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
+   * @param {boolean} value
+   */
+  set throwHookErrors(value) {
+    this._throwHookErrors = value;
+  }
+  /**
+   * Gets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
+   * @returns {boolean}
+   * @default false
+   */
+  get enforceBeforeAfter() {
+    return this._enforceBeforeAfter;
+  }
+  /**
+   * Sets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
+   * @param {boolean} value
+   */
+  set enforceBeforeAfter(value) {
+    this._enforceBeforeAfter = value;
+  }
+  /**
+   * Gets the map of deprecated hook names to deprecation messages.
+   * @returns {Map<string, string>}
+   */
+  get deprecatedHooks() {
+    return this._deprecatedHooks;
+  }
+  /**
+   * Sets the map of deprecated hook names to deprecation messages.
+   * @param {Map<string, string>} value
+   */
+  set deprecatedHooks(value) {
+    this._deprecatedHooks = value;
+  }
+  /**
+   * Gets whether deprecated hooks are allowed to be registered and executed. Default is true.
+   * @returns {boolean}
+   */
+  get allowDeprecated() {
+    return this._allowDeprecated;
+  }
+  /**
+   * Sets whether deprecated hooks are allowed to be registered and executed. Default is true.
+   * @param {boolean} value
+   */
+  set allowDeprecated(value) {
+    this._allowDeprecated = value;
+  }
+  /**
+   * Validates hook event name if enforceBeforeAfter is enabled
+   * @param {string} event - The event name to validate
+   * @throws {Error} If enforceBeforeAfter is true and event doesn't start with 'before' or 'after'
+   */
+  validateHookName(event) {
+    if (this._enforceBeforeAfter) {
+      const eventValue = event.trim().toLocaleLowerCase();
+      if (!eventValue.startsWith("before") && !eventValue.startsWith("after")) {
+        throw new Error(
+          `Hook event "${event}" must start with "before" or "after" when enforceBeforeAfter is enabled`
+        );
+      }
+    }
+  }
+  /**
+   * Checks if a hook is deprecated and emits a warning if it is
+   * @param {string} event - The event name to check
+   * @returns {boolean} - Returns true if the hook should proceed, false if it should be blocked
+   */
+  checkDeprecatedHook(event) {
+    if (this._deprecatedHooks.has(event)) {
+      const message = this._deprecatedHooks.get(event);
+      const warningMessage = `Hook "${event}" is deprecated${message ? `: ${message}` : ""}`;
+      this.emit("warn", { hook: event, message: warningMessage });
+      if (this.logger?.warn) {
+        this.logger.warn(warningMessage);
+      }
+      return this._allowDeprecated;
+    }
+    return true;
+  }
+  /**
+   * Adds a handler function for a specific event
+   * @param {string} event
+   * @param {Hook} handler - this can be async or sync
+   * @returns {void}
+   */
+  onHook(event, handler) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const eventHandlers = this._hooks.get(event);
+    if (eventHandlers) {
+      eventHandlers.push(handler);
+    } else {
+      this._hooks.set(event, [handler]);
+    }
+  }
+  /**
+   * Adds a handler function for a specific event that runs before all other handlers
+   * @param {HookEntry} hookEntry
+   * @returns {void}
+   */
+  onHookEntry(hookEntry) {
+    this.onHook(hookEntry.event, hookEntry.handler);
+  }
+  /**
+   * Alias for onHook. This is provided for compatibility with other libraries that use the `addHook` method.
+   * @param {string} event
+   * @param {Hook} handler - this can be async or sync
+   * @returns {void}
+   */
+  addHook(event, handler) {
+    this.onHook(event, handler);
+  }
+  /**
+   * Adds a handler function for a specific event
+   * @param {Array<HookEntry>} hooks
+   * @returns {void}
+   */
+  onHooks(hooks) {
+    for (const hook of hooks) {
+      this.onHook(hook.event, hook.handler);
+    }
+  }
+  /**
+   * Adds a handler function for a specific event that runs before all other handlers
+   * @param {string} event
+   * @param {Hook} handler - this can be async or sync
+   * @returns {void}
+   */
+  prependHook(event, handler) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const eventHandlers = this._hooks.get(event);
+    if (eventHandlers) {
+      eventHandlers.unshift(handler);
+    } else {
+      this._hooks.set(event, [handler]);
+    }
+  }
+  /**
+   * Adds a handler that only executes once for a specific event before all other handlers
+   * @param event
+   * @param handler
+   */
+  prependOnceHook(event, handler) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const hook = async (...arguments_) => {
+      this.removeHook(event, hook);
+      return handler(...arguments_);
+    };
+    this.prependHook(event, hook);
+  }
+  /**
+   * Adds a handler that only executes once for a specific event
+   * @param event
+   * @param handler
+   */
+  onceHook(event, handler) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const hook = async (...arguments_) => {
+      this.removeHook(event, hook);
+      return handler(...arguments_);
+    };
+    this.onHook(event, hook);
+  }
+  /**
+   * Removes a handler function for a specific event
+   * @param {string} event
+   * @param {Hook} handler
+   * @returns {void}
+   */
+  removeHook(event, handler) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const eventHandlers = this._hooks.get(event);
+    if (eventHandlers) {
+      const index = eventHandlers.indexOf(handler);
+      if (index !== -1) {
+        eventHandlers.splice(index, 1);
+      }
+    }
+  }
+  /**
+   * Removes all handlers for a specific event
+   * @param {Array<HookEntry>} hooks
+   * @returns {void}
+   */
+  removeHooks(hooks) {
+    for (const hook of hooks) {
+      this.removeHook(hook.event, hook.handler);
+    }
+  }
+  /**
+   * Calls all handlers for a specific event
+   * @param {string} event
+   * @param {T[]} arguments_
+   * @returns {Promise<void>}
+   */
+  async hook(event, ...arguments_) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return;
+    }
+    const eventHandlers = this._hooks.get(event);
+    if (eventHandlers) {
+      for (const handler of eventHandlers) {
+        try {
+          await handler(...arguments_);
+        } catch (error) {
+          const message = `${event}: ${error.message}`;
+          this.emit("error", new Error(message));
+          if (this.logger) {
+            this.logger.error(message);
+          }
+          if (this._throwHookErrors) {
+            throw new Error(message);
+          }
+        }
+      }
+    }
+  }
+  /**
+   * Prepends the word `before` to your hook. Example is event is `test`, the before hook is `before:test`.
+   * @param {string} event - The event name
+   * @param {T[]} arguments_ - The arguments to pass to the hook
+   */
+  async beforeHook(event, ...arguments_) {
+    await this.hook(`before:${event}`, ...arguments_);
+  }
+  /**
+   * Prepends the word `after` to your hook. Example is event is `test`, the after hook is `after:test`.
+   * @param {string} event - The event name
+   * @param {T[]} arguments_ - The arguments to pass to the hook
+   */
+  async afterHook(event, ...arguments_) {
+    await this.hook(`after:${event}`, ...arguments_);
+  }
+  /**
+   * Calls all handlers for a specific event. This is an alias for `hook` and is provided for
+   * compatibility with other libraries that use the `callHook` method.
+   * @param {string} event
+   * @param {T[]} arguments_
+   * @returns {Promise<void>}
+   */
+  async callHook(event, ...arguments_) {
+    await this.hook(event, ...arguments_);
+  }
+  /**
+   * Gets all hooks for a specific event
+   * @param {string} event
+   * @returns {Hook[]}
+   */
+  getHooks(event) {
+    this.validateHookName(event);
+    if (!this.checkDeprecatedHook(event)) {
+      return void 0;
+    }
+    return this._hooks.get(event);
+  }
+  /**
+   * Removes all hooks
+   * @returns {void}
+   */
+  clearHooks() {
+    this._hooks.clear();
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  Eventified,
+  Hookified
+});

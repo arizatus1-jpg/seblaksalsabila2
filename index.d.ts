@@ -1,39 +1,30 @@
 /**
-Check if [`argv`](https://nodejs.org/docs/latest/api/process.html#process_process_argv) has a specific flag.
-
-@param flag - CLI flag to look for. The `--` prefix is optional.
-@param argv - CLI arguments. Default: `process.argv`.
-@returns Whether the flag exists.
+Import a module while bypassing the cache.
 
 @example
 ```
-// $ ts-node foo.ts -f --unicorn --foo=bar -- --rainbow
+// foo.js
+let i = 0;
+module.exports = () => ++i;
 
-// foo.ts
-import hasFlag = require('has-flag');
+// index.js
+import importFresh = require('import-fresh');
 
-hasFlag('unicorn');
-//=> true
+require('./foo')();
+//=> 1
 
-hasFlag('--unicorn');
-//=> true
+require('./foo')();
+//=> 2
 
-hasFlag('f');
-//=> true
+importFresh('./foo')();
+//=> 1
 
-hasFlag('-f');
-//=> true
+importFresh('./foo')();
+//=> 1
 
-hasFlag('foo=bar');
-//=> true
-
-hasFlag('foo');
-//=> false
-
-hasFlag('rainbow');
-//=> false
+const foo = importFresh<typeof import('./foo')>('./foo');
 ```
 */
-declare function hasFlag(flag: string, argv?: string[]): boolean;
+declare function importFresh<T>(moduleId: string): T;
 
-export = hasFlag;
+export = importFresh;

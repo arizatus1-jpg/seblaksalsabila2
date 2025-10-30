@@ -1,137 +1,102 @@
-<p align="center">
-  <a href="https://gulpjs.com">
-    <img height="257" width="114" src="https://raw.githubusercontent.com/gulpjs/artwork/master/gulp-2x.png">
-  </a>
-</p>
+An ini format parser and serializer for node.
 
-# glob-parent
-
-[![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url] [![Azure Pipelines Build Status][azure-pipelines-image]][azure-pipelines-url] [![Travis Build Status][travis-image]][travis-url] [![AppVeyor Build Status][appveyor-image]][appveyor-url] [![Coveralls Status][coveralls-image]][coveralls-url] [![Gitter chat][gitter-image]][gitter-url]
-
-Extract the non-magic parent path from a glob string.
+Sections are treated as nested objects.  Items before the first
+heading are saved on the object directly.
 
 ## Usage
 
-```js
-var globParent = require('glob-parent');
+Consider an ini-file `config.ini` that looks like this:
 
-globParent('path/to/*.js'); // 'path/to'
-globParent('/root/path/to/*.js'); // '/root/path/to'
-globParent('/*.js'); // '/'
-globParent('*.js'); // '.'
-globParent('**/*.js'); // '.'
-globParent('path/{to,from}'); // 'path'
-globParent('path/!(to|from)'); // 'path'
-globParent('path/?(to|from)'); // 'path'
-globParent('path/+(to|from)'); // 'path'
-globParent('path/*(to|from)'); // 'path'
-globParent('path/@(to|from)'); // 'path'
-globParent('path/**/*'); // 'path'
+    ; this comment is being ignored
+    scope = global
 
-// if provided a non-glob path, returns the nearest dir
-globParent('path/foo/bar.js'); // 'path/foo'
-globParent('path/foo/'); // 'path/foo'
-globParent('path/foo'); // 'path' (see issue #3 for details)
-```
+    [database]
+    user = dbuser
+    password = dbpassword
+    database = use_this_database
+
+    [paths.default]
+    datadir = /var/lib/data
+    array[] = first value
+    array[] = second value
+    array[] = third value
+
+You can read, manipulate and write the ini-file like so:
+
+    var fs = require('fs')
+      , ini = require('ini')
+
+    var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'))
+
+    config.scope = 'local'
+    config.database.database = 'use_another_database'
+    config.paths.default.tmpdir = '/tmp'
+    delete config.paths.default.datadir
+    config.paths.default.array.push('fourth value')
+
+    fs.writeFileSync('./config_modified.ini', ini.stringify(config, { section: 'section' }))
+
+This will result in a file called `config_modified.ini` being written
+to the filesystem with the following content:
+
+    [section]
+    scope=local
+    [section.database]
+    user=dbuser
+    password=dbpassword
+    database=use_another_database
+    [section.paths.default]
+    tmpdir=/tmp
+    array[]=first value
+    array[]=second value
+    array[]=third value
+    array[]=fourth value
+
 
 ## API
 
-### `globParent(maybeGlobString, [options])`
+### decode(inistring)
 
-Takes a string and returns the part of the path before the glob begins. Be aware of Escaping rules and Limitations below.
+Decode the ini-style formatted `inistring` into a nested object.
 
-#### options
+### parse(inistring)
 
-```js
-{
-  // Disables the automatic conversion of slashes for Windows
-  flipBackslashes: true
-}
-```
+Alias for `decode(inistring)`
 
-## Escaping
+### encode(object, [options])
 
-The following characters have special significance in glob patterns and must be escaped if you want them to be treated as regular path characters:
+Encode the object `object` into an ini-style formatted string. If the
+optional parameter `section` is given, then all top-level properties
+of the object are put into this section and the `section`-string is
+prepended to all sub-sections, see the usage example above.
 
-- `?` (question mark) unless used as a path segment alone
-- `*` (asterisk)
-- `|` (pipe)
-- `(` (opening parenthesis)
-- `)` (closing parenthesis)
-- `{` (opening curly brace)
-- `}` (closing curly brace)
-- `[` (opening bracket)
-- `]` (closing bracket)
+The `options` object may contain the following:
 
-**Example**
+* `section` A string which will be the first `section` in the encoded
+  ini data.  Defaults to none.
+* `whitespace` Boolean to specify whether to put whitespace around the
+  `=` character.  By default, whitespace is omitted, to be friendly to
+  some persnickety old parsers that don't tolerate it well.  But some
+  find that it's more human-readable and pretty with the whitespace.
 
-```js
-globParent('foo/[bar]/') // 'foo'
-globParent('foo/\\[bar]/') // 'foo/[bar]'
-```
+For backwards compatibility reasons, if a `string` options is passed
+in, then it is assumed to be the `section` value.
 
-## Limitations
+### stringify(object, [options])
 
-### Braces & Brackets
-This library attempts a quick and imperfect method of determining which path
-parts have glob magic without fully parsing/lexing the pattern. There are some
-advanced use cases that can trip it up, such as nested braces where the outer
-pair is escaped and the inner one contains a path separator. If you find
-yourself in the unlikely circumstance of being affected by this or need to
-ensure higher-fidelity glob handling in your library, it is recommended that you
-pre-process your input with [expand-braces] and/or [expand-brackets].
+Alias for `encode(object, [options])`
 
-### Windows
-Backslashes are not valid path separators for globs. If a path with backslashes
-is provided anyway, for simple cases, glob-parent will replace the path
-separator for you and return the non-glob parent path (now with
-forward-slashes, which are still valid as Windows path separators).
+### safe(val)
 
-This cannot be used in conjunction with escape characters.
+Escapes the string `val` such that it is safe to be used as a key or
+value in an ini-file. Basically escapes quotes. For example
 
-```js
-// BAD
-globParent('C:\\Program Files \\(x86\\)\\*.ext') // 'C:/Program Files /(x86/)'
+    ini.safe('"unsafe string"')
 
-// GOOD
-globParent('C:/Program Files\\(x86\\)/*.ext') // 'C:/Program Files (x86)'
-```
+would result in
 
-If you are using escape characters for a pattern without path parts (i.e.
-relative to `cwd`), prefix with `./` to avoid confusing glob-parent.
+    "\"unsafe string\""
 
-```js
-// BAD
-globParent('foo \\[bar]') // 'foo '
-globParent('foo \\[bar]*') // 'foo '
+### unsafe(val)
 
-// GOOD
-globParent('./foo \\[bar]') // 'foo [bar]'
-globParent('./foo \\[bar]*') // '.'
-```
-
-## License
-
-ISC
-
-[expand-braces]: https://github.com/jonschlinkert/expand-braces
-[expand-brackets]: https://github.com/jonschlinkert/expand-brackets
-
-[downloads-image]: https://img.shields.io/npm/dm/glob-parent.svg
-[npm-url]: https://www.npmjs.com/package/glob-parent
-[npm-image]: https://img.shields.io/npm/v/glob-parent.svg
-
-[azure-pipelines-url]: https://dev.azure.com/gulpjs/gulp/_build/latest?definitionId=2&branchName=master
-[azure-pipelines-image]: https://dev.azure.com/gulpjs/gulp/_apis/build/status/glob-parent?branchName=master
-
-[travis-url]: https://travis-ci.org/gulpjs/glob-parent
-[travis-image]: https://img.shields.io/travis/gulpjs/glob-parent.svg?label=travis-ci
-
-[appveyor-url]: https://ci.appveyor.com/project/gulpjs/glob-parent
-[appveyor-image]: https://img.shields.io/appveyor/ci/gulpjs/glob-parent.svg?label=appveyor
-
-[coveralls-url]: https://coveralls.io/r/gulpjs/glob-parent
-[coveralls-image]: https://img.shields.io/coveralls/gulpjs/glob-parent/master.svg
-
-[gitter-url]: https://gitter.im/gulpjs/gulp
-[gitter-image]: https://badges.gitter.im/gulpjs/gulp.svg
+Unescapes the string `val`

@@ -1,46 +1,33 @@
 {
-	"name": "has-flag",
-	"version": "4.0.0",
-	"description": "Check if argv has a specific flag",
-	"license": "MIT",
-	"repository": "sindresorhus/has-flag",
-	"author": {
-		"name": "Sindre Sorhus",
-		"email": "sindresorhus@gmail.com",
-		"url": "sindresorhus.com"
-	},
-	"engines": {
-		"node": ">=8"
-	},
-	"scripts": {
-		"test": "xo && ava && tsd"
-	},
-	"files": [
-		"index.js",
-		"index.d.ts"
-	],
-	"keywords": [
-		"has",
-		"check",
-		"detect",
-		"contains",
-		"find",
-		"flag",
-		"cli",
-		"command-line",
-		"argv",
-		"process",
-		"arg",
-		"args",
-		"argument",
-		"arguments",
-		"getopt",
-		"minimist",
-		"optimist"
-	],
-	"devDependencies": {
-		"ava": "^1.4.1",
-		"tsd": "^0.7.2",
-		"xo": "^0.24.0"
-	}
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "name": "ini",
+  "description": "An ini encoder/decoder for node",
+  "version": "1.3.8",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/isaacs/ini.git"
+  },
+  "main": "ini.js",
+  "scripts": {
+    "eslint": "eslint",
+    "lint": "npm run eslint -- ini.js test/*.js",
+    "lintfix": "npm run lint -- --fix",
+    "test": "tap",
+    "posttest": "npm run lint",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags"
+  },
+  "devDependencies": {
+    "eslint": "^7.9.0",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "tap": "14"
+  },
+  "license": "ISC",
+  "files": [
+    "ini.js"
+  ]
 }

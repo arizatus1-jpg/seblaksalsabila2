@@ -1,255 +1,492 @@
-import { CacheableMemory } from 'cacheable';
-import { Hookified } from 'hookified';
-
-type FlatCacheOptions = {
-    ttl?: number | string;
-    useClone?: boolean;
-    lruSize?: number;
-    expirationInterval?: number;
-    persistInterval?: number;
-    cacheDir?: string;
-    cacheId?: string;
-    deserialize?: (data: string) => any;
-    serialize?: (data: any) => string;
+type Logger = {
+    trace: (message: string, ...arguments_: unknown[]) => void;
+    debug: (message: string, ...arguments_: unknown[]) => void;
+    info: (message: string, ...arguments_: unknown[]) => void;
+    warn: (message: string, ...arguments_: unknown[]) => void;
+    error: (message: string, ...arguments_: unknown[]) => void;
+    fatal: (message: string, ...arguments_: unknown[]) => void;
 };
-declare enum FlatCacheEvents {
-    SAVE = "save",
-    LOAD = "load",
-    DELETE = "delete",
-    CLEAR = "clear",
-    DESTROY = "destroy",
-    ERROR = "error",
-    EXPIRED = "expired"
+
+type IEventEmitter = {
+    /**
+     * Registers a listener for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to listen for.
+     * @param listener - A callback function that will be invoked when the event is emitted.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.on('data', (message) => {
+     *   console.log(message);
+     * });
+     */
+    on(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Alias for `on`. Registers a listener for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to listen for.
+     * @param listener - A callback function that will be invoked when the event is emitted.
+     * @returns The current instance of EventEmitter for method chaining.
+     */
+    addListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Registers a one-time listener for the specified event. The listener is removed after it is called once.
+     *
+     * @param eventName - The name (or symbol) of the event to listen for.
+     * @param listener - A callback function that will be invoked once when the event is emitted.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.once('close', () => {
+     *   console.log('The connection was closed.');
+     * });
+     */
+    once(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Removes a previously registered listener for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to stop listening for.
+     * @param listener - The specific callback function to remove.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.off('data', myListener);
+     */
+    off(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Alias for `off`. Removes a previously registered listener for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to stop listening for.
+     * @param listener - The specific callback function to remove.
+     * @returns The current instance of EventEmitter for method chaining.
+     */
+    removeListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Emits the specified event, invoking all registered listeners with the provided arguments.
+     *
+     * @param eventName - The name (or symbol) of the event to emit.
+     * @param args - Arguments passed to each listener.
+     * @returns `true` if the event had listeners, `false` otherwise.
+     *
+     * @example
+     * emitter.emit('data', 'Hello World');
+     */
+    emit(eventName: string | symbol, ...arguments_: any[]): boolean;
+    /**
+     * Returns the number of listeners registered for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event.
+     * @returns The number of registered listeners.
+     *
+     * @example
+     * const count = emitter.listenerCount('data');
+     * console.log(count); // e.g., 2
+     */
+    listenerCount(eventName: string | symbol): number;
+    /**
+     * Removes all listeners for the specified event. If no event is specified, it removes all listeners for all events.
+     *
+     * @param eventName - (Optional) The name (or symbol) of the event.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.removeAllListeners('data');
+     */
+    removeAllListeners(eventName?: string | symbol): IEventEmitter;
+    /**
+     * Returns an array of event names for which listeners have been registered.
+     *
+     * @returns An array of event names (or symbols).
+     *
+     * @example
+     * const events = emitter.eventNames();
+     * console.log(events); // e.g., ['data', 'close']
+     */
+    eventNames(): Array<string | symbol>;
+    /**
+     * Returns an array of listeners registered for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event.
+     * @returns An array of listener functions.
+     *
+     * @example
+     * const listeners = emitter.listeners('data');
+     * console.log(listeners.length); // e.g., 2
+     */
+    listeners(eventName: string | symbol): Array<(...arguments_: any[]) => void>;
+    /**
+     * Returns an array of raw listeners for the specified event. This includes listeners wrapped by internal mechanisms (e.g., once-only listeners).
+     *
+     * @param eventName - The name (or symbol) of the event.
+     * @returns An array of raw listener functions.
+     *
+     * @example
+     * const rawListeners = emitter.rawListeners('data');
+     */
+    rawListeners(eventName: string | symbol): Array<(...arguments_: any[]) => void>;
+    /**
+     * Adds a listener to the beginning of the listeners array for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to listen for.
+     * @param listener - A callback function that will be invoked when the event is emitted.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.prependListener('data', (message) => {
+     *   console.log('This will run first.');
+     * });
+     */
+    prependListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+    /**
+     * Adds a one-time listener to the beginning of the listeners array for the specified event.
+     *
+     * @param eventName - The name (or symbol) of the event to listen for.
+     * @param listener - A callback function that will be invoked once when the event is emitted.
+     * @returns The current instance of EventEmitter for method chaining.
+     *
+     * @example
+     * emitter.prependOnceListener('data', (message) => {
+     *   console.log('This will run first and only once.');
+     * });
+     */
+    prependOnceListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
+};
+type EventListener = (...arguments_: any[]) => void;
+type EventEmitterOptions = {
+    /**
+     * Logger instance for logging errors.
+     */
+    logger?: Logger;
+    /**
+     * Whether to throw an error when emit 'error' and there are no listeners. Default is false and only emits an error event.
+     */
+    throwOnEmitError?: boolean;
+};
+declare class Eventified implements IEventEmitter {
+    private readonly _eventListeners;
+    private _maxListeners;
+    private _logger?;
+    private _throwOnEmitError;
+    constructor(options?: EventEmitterOptions);
+    /**
+     * Gets the logger
+     * @returns {Logger}
+     */
+    get logger(): Logger | undefined;
+    /**
+     * Sets the logger
+     * @param {Logger} logger
+     */
+    set logger(logger: Logger | undefined);
+    /**
+     * Gets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
+     * @returns {boolean}
+     */
+    get throwOnEmitError(): boolean;
+    /**
+     * Sets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
+     * @param {boolean} value
+     */
+    set throwOnEmitError(value: boolean);
+    /**
+     * Adds a handler function for a specific event that will run only once
+     * @param {string | symbol} eventName
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    once(eventName: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Gets the number of listeners for a specific event. If no event is provided, it returns the total number of listeners
+     * @param {string} eventName The event name. Not required
+     * @returns {number} The number of listeners
+     */
+    listenerCount(eventName?: string | symbol): number;
+    /**
+     * Gets an array of event names
+     * @returns {Array<string | symbol>} An array of event names
+     */
+    eventNames(): Array<string | symbol>;
+    /**
+     * Gets an array of listeners for a specific event. If no event is provided, it returns all listeners
+     * @param {string} [event] (Optional) The event name
+     * @returns {EventListener[]} An array of listeners
+     */
+    rawListeners(event?: string | symbol): EventListener[];
+    /**
+     * Prepends a listener to the beginning of the listeners array for the specified event
+     * @param {string | symbol} eventName
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    prependListener(eventName: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Prepends a one-time listener to the beginning of the listeners array for the specified event
+     * @param {string | symbol} eventName
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    prependOnceListener(eventName: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Gets the maximum number of listeners that can be added for a single event
+     * @returns {number} The maximum number of listeners
+     */
+    maxListeners(): number;
+    /**
+     * Adds a listener for a specific event. It is an alias for the on() method
+     * @param {string | symbol} event
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    addListener(event: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Adds a listener for a specific event
+     * @param {string | symbol} event
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    on(event: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Removes a listener for a specific event. It is an alias for the off() method
+     * @param {string | symbol} event
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    removeListener(event: string, listener: EventListener): IEventEmitter;
+    /**
+     * Removes a listener for a specific event
+     * @param {string | symbol} event
+     * @param {EventListener} listener
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    off(event: string | symbol, listener: EventListener): IEventEmitter;
+    /**
+     * Calls all listeners for a specific event
+     * @param {string | symbol} event
+     * @param arguments_ The arguments to pass to the listeners
+     * @returns {boolean} Returns true if the event had listeners, false otherwise
+     */
+    emit(event: string | symbol, ...arguments_: any[]): boolean;
+    /**
+     * Gets all listeners for a specific event. If no event is provided, it returns all listeners
+     * @param {string} [event] (Optional) The event name
+     * @returns {EventListener[]} An array of listeners
+     */
+    listeners(event: string | symbol): EventListener[];
+    /**
+     * Removes all listeners for a specific event. If no event is provided, it removes all listeners
+     * @param {string} [event] (Optional) The event name
+     * @returns {IEventEmitter} returns the instance of the class for chaining
+     */
+    removeAllListeners(event?: string | symbol): IEventEmitter;
+    /**
+     * Sets the maximum number of listeners that can be added for a single event
+     * @param {number} n The maximum number of listeners
+     * @returns {void}
+     */
+    setMaxListeners(n: number): void;
+    /**
+     * Gets all listeners
+     * @returns {EventListener[]} An array of listeners
+     */
+    getAllListeners(): EventListener[];
 }
-declare class FlatCache extends Hookified {
-    private readonly _cache;
-    private _cacheDir;
-    private _cacheId;
-    private _persistInterval;
-    private _persistTimer;
-    private _changesSinceLastSave;
-    private readonly _parse;
-    private readonly _stringify;
-    constructor(options?: FlatCacheOptions);
+
+type Hook = (...arguments_: any[]) => Promise<void> | void;
+type HookEntry = {
     /**
-     * The cache object
-     * @property cache
-     * @type {CacheableMemory}
+     * The event name for the hook
      */
-    get cache(): CacheableMemory;
+    event: string;
     /**
-     * The cache directory
-     * @property cacheDir
-     * @type {String}
-     * @default '.cache'
+     * The handler function for the hook
      */
-    get cacheDir(): string;
+    handler: Hook;
+};
+type HookifiedOptions = {
     /**
-     * Set the cache directory
-     * @property cacheDir
-     * @type {String}
-     * @default '.cache'
+     * Whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
      */
-    set cacheDir(value: string);
+    throwHookErrors?: boolean;
     /**
-     * The cache id
-     * @property cacheId
-     * @type {String}
-     * @default 'cache1'
-     */
-    get cacheId(): string;
-    /**
-     * Set the cache id
-     * @property cacheId
-     * @type {String}
-     * @default 'cache1'
-     */
-    set cacheId(value: string);
-    /**
-     * The flag to indicate if there are changes since the last save
-     * @property changesSinceLastSave
-     * @type {Boolean}
+     * Whether to enforce that all hook names start with 'before' or 'after'. Default is false.
+     * @type {boolean}
      * @default false
      */
-    get changesSinceLastSave(): boolean;
+    enforceBeforeAfter?: boolean;
     /**
-     * The interval to persist the cache to disk. 0 means no timed persistence
-     * @property persistInterval
-     * @type {Number}
-     * @default 0
+     * Map of deprecated hook names to deprecation messages. When a deprecated hook is used, a warning will be emitted.
+     * @type {Map<string, string>}
+     * @default new Map()
      */
-    get persistInterval(): number;
+    deprecatedHooks?: Map<string, string>;
     /**
-     * Set the interval to persist the cache to disk. 0 means no timed persistence
-     * @property persistInterval
-     * @type {Number}
-     * @default 0
+     * Whether to allow deprecated hooks to be registered and executed. Default is true.
+     * @type {boolean}
+     * @default true
      */
-    set persistInterval(value: number);
+    allowDeprecated?: boolean;
+} & EventEmitterOptions;
+declare class Hookified extends Eventified {
+    private readonly _hooks;
+    private _throwHookErrors;
+    private _enforceBeforeAfter;
+    private _deprecatedHooks;
+    private _allowDeprecated;
+    constructor(options?: HookifiedOptions);
     /**
-     * Load a cache identified by the given Id. If the element does not exists, then initialize an empty
-     * cache storage. If specified `cacheDir` will be used as the directory to persist the data to. If omitted
-     * then the cache module directory `.cacheDir` will be used instead
-     *
-     * @method load
-     * @param cacheId {String} the id of the cache, would also be used as the name of the file cache
-     * @param cacheDir {String} directory for the cache entry
+     * Gets all hooks
+     * @returns {Map<string, Hook[]>}
      */
-    load(cacheId?: string, cacheDir?: string): void;
+    get hooks(): Map<string, Hook[]>;
     /**
-     * Load the cache from the provided file
-     * @method loadFile
-     * @param  {String} pathToFile the path to the file containing the info for the cache
+     * Gets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
+     * @returns {boolean}
      */
-    loadFile(pathToFile: string): void;
-    loadFileStream(pathToFile: string, onProgress: (progress: number, total: number) => void, onEnd: () => void, onError?: (error: Error) => void): void;
+    get throwHookErrors(): boolean;
     /**
-     * Returns the entire persisted object
-     * @method all
-     * @returns {*}
+     * Sets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
+     * @param {boolean} value
      */
-    all(): Record<string, any>;
+    set throwHookErrors(value: boolean);
     /**
-     * Returns an array with all the items in the cache { key, value, expires }
-     * @method items
-     * @returns {Array}
+     * Gets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
+     * @returns {boolean}
+     * @default false
      */
-    get items(): Array<{
-        key: string;
-        value: any;
-        expires?: number;
-    }>;
+    get enforceBeforeAfter(): boolean;
     /**
-     * Returns the path to the file where the cache is persisted
-     * @method cacheFilePath
-     * @returns {String}
+     * Sets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
+     * @param {boolean} value
      */
-    get cacheFilePath(): string;
+    set enforceBeforeAfter(value: boolean);
     /**
-     * Returns the path to the cache directory
-     * @method cacheDirPath
-     * @returns {String}
+     * Gets the map of deprecated hook names to deprecation messages.
+     * @returns {Map<string, string>}
      */
-    get cacheDirPath(): string;
+    get deprecatedHooks(): Map<string, string>;
     /**
-     * Returns an array with all the keys in the cache
-     * @method keys
-     * @returns {Array}
+     * Sets the map of deprecated hook names to deprecation messages.
+     * @param {Map<string, string>} value
      */
-    keys(): string[];
+    set deprecatedHooks(value: Map<string, string>);
     /**
-     * (Legacy) set key method. This method will be deprecated in the future
-     * @method setKey
-     * @param key {string} the key to set
-     * @param value {object} the value of the key. Could be any object that can be serialized with JSON.stringify
+     * Gets whether deprecated hooks are allowed to be registered and executed. Default is true.
+     * @returns {boolean}
      */
-    setKey(key: string, value: any, ttl?: number | string): void;
+    get allowDeprecated(): boolean;
     /**
-     * Sets a key to a given value
-     * @method set
-     * @param key {string} the key to set
-     * @param value {object} the value of the key. Could be any object that can be serialized with JSON.stringify
-     * @param [ttl] {number} the time to live in milliseconds
+     * Sets whether deprecated hooks are allowed to be registered and executed. Default is true.
+     * @param {boolean} value
      */
-    set(key: string, value: any, ttl?: number | string): void;
+    set allowDeprecated(value: boolean);
     /**
-     * (Legacy) Remove a given key from the cache. This method will be deprecated in the future
-     * @method removeKey
-     * @param key {String} the key to remove from the object
+     * Validates hook event name if enforceBeforeAfter is enabled
+     * @param {string} event - The event name to validate
+     * @throws {Error} If enforceBeforeAfter is true and event doesn't start with 'before' or 'after'
      */
-    removeKey(key: string): void;
+    private validateHookName;
     /**
-     * Remove a given key from the cache
-     * @method delete
-     * @param key {String} the key to remove from the object
+     * Checks if a hook is deprecated and emits a warning if it is
+     * @param {string} event - The event name to check
+     * @returns {boolean} - Returns true if the hook should proceed, false if it should be blocked
      */
-    delete(key: string): void;
+    private checkDeprecatedHook;
     /**
-     * (Legacy) Return the value of the provided key. This method will be deprecated in the future
-     * @method getKey<T>
-     * @param key {String} the name of the key to retrieve
-     * @returns {*} at T the value from the key
+     * Adds a handler function for a specific event
+     * @param {string} event
+     * @param {Hook} handler - this can be async or sync
+     * @returns {void}
      */
-    getKey<T>(key: string): T;
+    onHook(event: string, handler: Hook): void;
     /**
-     * Return the value of the provided key
-     * @method get<T>
-     * @param key {String} the name of the key to retrieve
-     * @returns {*} at T the value from the key
+     * Adds a handler function for a specific event that runs before all other handlers
+     * @param {HookEntry} hookEntry
+     * @returns {void}
      */
-    get<T>(key: string): T;
+    onHookEntry(hookEntry: HookEntry): void;
     /**
-     * Clear the cache and save the state to disk
-     * @method clear
+     * Alias for onHook. This is provided for compatibility with other libraries that use the `addHook` method.
+     * @param {string} event
+     * @param {Hook} handler - this can be async or sync
+     * @returns {void}
      */
-    clear(): void;
+    addHook(event: string, handler: Hook): void;
     /**
-     * Save the state of the cache identified by the docId to disk
-     * as a JSON structure
-     * @method save
+     * Adds a handler function for a specific event
+     * @param {Array<HookEntry>} hooks
+     * @returns {void}
      */
-    save(force?: boolean): void;
+    onHooks(hooks: HookEntry[]): void;
     /**
-     * Remove the file where the cache is persisted
-     * @method removeCacheFile
-     * @return {Boolean} true or false if the file was successfully deleted
+     * Adds a handler function for a specific event that runs before all other handlers
+     * @param {string} event
+     * @param {Hook} handler - this can be async or sync
+     * @returns {void}
      */
-    removeCacheFile(): boolean;
+    prependHook(event: string, handler: Hook): void;
     /**
-     * Destroy the cache. This will remove the directory, file, and memory cache
-     * @method destroy
-     * @param [includeCacheDir=false] {Boolean} if true, the cache directory will be removed
-     * @return {undefined}
+     * Adds a handler that only executes once for a specific event before all other handlers
+     * @param event
+     * @param handler
      */
-    destroy(includeCacheDirectory?: boolean): void;
+    prependOnceHook(event: string, handler: Hook): void;
     /**
-     * Start the auto persist interval
-     * @method startAutoPersist
+     * Adds a handler that only executes once for a specific event
+     * @param event
+     * @param handler
      */
-    startAutoPersist(): void;
+    onceHook(event: string, handler: Hook): void;
     /**
-     * Stop the auto persist interval
-     * @method stopAutoPersist
+     * Removes a handler function for a specific event
+     * @param {string} event
+     * @param {Hook} handler
+     * @returns {void}
      */
-    stopAutoPersist(): void;
+    removeHook(event: string, handler: Hook): void;
+    /**
+     * Removes all handlers for a specific event
+     * @param {Array<HookEntry>} hooks
+     * @returns {void}
+     */
+    removeHooks(hooks: HookEntry[]): void;
+    /**
+     * Calls all handlers for a specific event
+     * @param {string} event
+     * @param {T[]} arguments_
+     * @returns {Promise<void>}
+     */
+    hook<T>(event: string, ...arguments_: T[]): Promise<void>;
+    /**
+     * Prepends the word `before` to your hook. Example is event is `test`, the before hook is `before:test`.
+     * @param {string} event - The event name
+     * @param {T[]} arguments_ - The arguments to pass to the hook
+     */
+    beforeHook<T>(event: string, ...arguments_: T[]): Promise<void>;
+    /**
+     * Prepends the word `after` to your hook. Example is event is `test`, the after hook is `after:test`.
+     * @param {string} event - The event name
+     * @param {T[]} arguments_ - The arguments to pass to the hook
+     */
+    afterHook<T>(event: string, ...arguments_: T[]): Promise<void>;
+    /**
+     * Calls all handlers for a specific event. This is an alias for `hook` and is provided for
+     * compatibility with other libraries that use the `callHook` method.
+     * @param {string} event
+     * @param {T[]} arguments_
+     * @returns {Promise<void>}
+     */
+    callHook<T>(event: string, ...arguments_: T[]): Promise<void>;
+    /**
+     * Gets all hooks for a specific event
+     * @param {string} event
+     * @returns {Hook[]}
+     */
+    getHooks(event: string): Hook[] | undefined;
+    /**
+     * Removes all hooks
+     * @returns {void}
+     */
+    clearHooks(): void;
 }
-declare class FlatCacheDefault {
-    static create: typeof create;
-    static createFromFile: typeof createFromFile;
-    static clearCacheById: typeof clearCacheById;
-    static clearAll: typeof clearAll;
-}
-/**
- * Load a cache identified by the given Id. If the element does not exists, then initialize an empty
- * cache storage.
- *
- * @method create
- * @param docId {String} the id of the cache, would also be used as the name of the file cache
- * @param cacheDirectory {String} directory for the cache entry
- * @param options {FlatCacheOptions} options for the cache
- * @returns {cache} cache instance
- */
-declare function create(options?: FlatCacheOptions): FlatCache;
-/**
- * Load a cache from the provided file
- * @method createFromFile
- * @param  {String} filePath the path to the file containing the info for the cache
- * @param options {FlatCacheOptions} options for the cache
- * @returns {cache} cache instance
- */
-declare function createFromFile(filePath: string, options?: FlatCacheOptions): FlatCache;
-/**
- * Clear the cache identified by the given Id. This will only remove the cache from disk.
- * @method clearCacheById
- * @param cacheId {String} the id of the cache
- * @param cacheDirectory {String} directory for the cache entry
- */
-declare function clearCacheById(cacheId: string, cacheDirectory?: string): void;
-/**
- * Clear the cache directory
- * @method clearAll
- * @param cacheDir {String} directory for the cache entry
- */
-declare function clearAll(cacheDirectory?: string): void;
 
-export { FlatCache, FlatCacheEvents, type FlatCacheOptions, clearAll, clearCacheById, create, createFromFile, FlatCacheDefault as default };
+export { type EventListener, Eventified, type Hook, type HookEntry, Hookified, type HookifiedOptions, type Logger };
