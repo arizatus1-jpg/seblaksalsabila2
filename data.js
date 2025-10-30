@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     "generic": true,
     "cssWideKeywords": [
         "initial",

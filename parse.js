@@ -1,331 +1,552 @@
-'use strict';
-
-const stringify = require('./stringify');
-
-/**
- * Constants
- */
-
-const {
-  MAX_LENGTH,
-  CHAR_BACKSLASH, /* \ */
-  CHAR_BACKTICK, /* ` */
-  CHAR_COMMA, /* , */
-  CHAR_DOT, /* . */
-  CHAR_LEFT_PARENTHESES, /* ( */
-  CHAR_RIGHT_PARENTHESES, /* ) */
-  CHAR_LEFT_CURLY_BRACE, /* { */
-  CHAR_RIGHT_CURLY_BRACE, /* } */
-  CHAR_LEFT_SQUARE_BRACKET, /* [ */
-  CHAR_RIGHT_SQUARE_BRACKET, /* ] */
-  CHAR_DOUBLE_QUOTE, /* " */
-  CHAR_SINGLE_QUOTE, /* ' */
-  CHAR_NO_BREAK_SPACE,
-  CHAR_ZERO_WIDTH_NOBREAK_SPACE
-} = require('./constants');
-
-/**
- * parse
- */
-
-const parse = (input, options = {}) => {
-  if (typeof input !== 'string') {
-    throw new TypeError('Expected a string');
-  }
-
-  const opts = options || {};
-  const max = typeof opts.maxLength === 'number' ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
-  if (input.length > max) {
-    throw new SyntaxError(`Input length (${input.length}), exceeds max characters (${max})`);
-  }
-
-  const ast = { type: 'root', input, nodes: [] };
-  const stack = [ast];
-  let block = ast;
-  let prev = ast;
-  let brackets = 0;
-  const length = input.length;
-  let index = 0;
-  let depth = 0;
-  let value;
-
-  /**
-   * Helpers
-   */
-
-  const advance = () => input[index++];
-  const push = node => {
-    if (node.type === 'text' && prev.type === 'dot') {
-      prev.type = 'text';
-    }
-
-    if (prev && prev.type === 'text' && node.type === 'text') {
-      prev.value += node.value;
-      return;
-    }
-
-    block.nodes.push(node);
-    node.parent = block;
-    node.prev = prev;
-    prev = node;
-    return node;
-  };
-
-  push({ type: 'bos' });
-
-  while (index < length) {
-    block = stack[stack.length - 1];
-    value = advance();
-
-    /**
-     * Invalid chars
-     */
-
-    if (value === CHAR_ZERO_WIDTH_NOBREAK_SPACE || value === CHAR_NO_BREAK_SPACE) {
-      continue;
-    }
-
-    /**
-     * Escaped chars
-     */
-
-    if (value === CHAR_BACKSLASH) {
-      push({ type: 'text', value: (options.keepEscaping ? value : '') + advance() });
-      continue;
-    }
-
-    /**
-     * Right square bracket (literal): ']'
-     */
-
-    if (value === CHAR_RIGHT_SQUARE_BRACKET) {
-      push({ type: 'text', value: '\\' + value });
-      continue;
-    }
-
-    /**
-     * Left square bracket: '['
-     */
-
-    if (value === CHAR_LEFT_SQUARE_BRACKET) {
-      brackets++;
-
-      let next;
-
-      while (index < length && (next = advance())) {
-        value += next;
-
-        if (next === CHAR_LEFT_SQUARE_BRACKET) {
-          brackets++;
-          continue;
-        }
-
-        if (next === CHAR_BACKSLASH) {
-          value += advance();
-          continue;
-        }
-
-        if (next === CHAR_RIGHT_SQUARE_BRACKET) {
-          brackets--;
-
-          if (brackets === 0) {
-            break;
-          }
-        }
-      }
-
-      push({ type: 'text', value });
-      continue;
-    }
-
-    /**
-     * Parentheses
-     */
-
-    if (value === CHAR_LEFT_PARENTHESES) {
-      block = push({ type: 'paren', nodes: [] });
-      stack.push(block);
-      push({ type: 'text', value });
-      continue;
-    }
-
-    if (value === CHAR_RIGHT_PARENTHESES) {
-      if (block.type !== 'paren') {
-        push({ type: 'text', value });
-        continue;
-      }
-      block = stack.pop();
-      push({ type: 'text', value });
-      block = stack[stack.length - 1];
-      continue;
-    }
-
-    /**
-     * Quotes: '|"|`
-     */
-
-    if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-      const open = value;
-      let next;
-
-      if (options.keepQuotes !== true) {
-        value = '';
-      }
-
-      while (index < length && (next = advance())) {
-        if (next === CHAR_BACKSLASH) {
-          value += next + advance();
-          continue;
-        }
-
-        if (next === open) {
-          if (options.keepQuotes === true) value += next;
-          break;
-        }
-
-        value += next;
-      }
-
-      push({ type: 'text', value });
-      continue;
-    }
-
-    /**
-     * Left curly brace: '{'
-     */
-
-    if (value === CHAR_LEFT_CURLY_BRACE) {
-      depth++;
-
-      const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
-      const brace = {
-        type: 'brace',
-        open: true,
-        close: false,
-        dollar,
-        depth,
-        commas: 0,
-        ranges: 0,
-        nodes: []
-      };
-
-      block = push(brace);
-      stack.push(block);
-      push({ type: 'open', value });
-      continue;
-    }
-
-    /**
-     * Right curly brace: '}'
-     */
-
-    if (value === CHAR_RIGHT_CURLY_BRACE) {
-      if (block.type !== 'brace') {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      const type = 'close';
-      block = stack.pop();
-      block.close = true;
-
-      push({ type, value });
-      depth--;
-
-      block = stack[stack.length - 1];
-      continue;
-    }
-
-    /**
-     * Comma: ','
-     */
-
-    if (value === CHAR_COMMA && depth > 0) {
-      if (block.ranges > 0) {
-        block.ranges = 0;
-        const open = block.nodes.shift();
-        block.nodes = [open, { type: 'text', value: stringify(block) }];
-      }
-
-      push({ type: 'comma', value });
-      block.commas++;
-      continue;
-    }
-
-    /**
-     * Dot: '.'
-     */
-
-    if (value === CHAR_DOT && depth > 0 && block.commas === 0) {
-      const siblings = block.nodes;
-
-      if (depth === 0 || siblings.length === 0) {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      if (prev.type === 'dot') {
-        block.range = [];
-        prev.value += value;
-        prev.type = 'range';
-
-        if (block.nodes.length !== 3 && block.nodes.length !== 5) {
-          block.invalid = true;
-          block.ranges = 0;
-          prev.type = 'text';
-          continue;
-        }
-
-        block.ranges++;
-        block.args = [];
-        continue;
-      }
-
-      if (prev.type === 'range') {
-        siblings.pop();
-
-        const before = siblings[siblings.length - 1];
-        before.value += prev.value + value;
-        prev = before;
-        block.ranges--;
-        continue;
-      }
-
-      push({ type: 'dot', value });
-      continue;
-    }
-
-    /**
-     * Text
-     */
-
-    push({ type: 'text', value });
-  }
-
-  // Mark imbalanced braces and brackets as invalid
-  do {
-    block = stack.pop();
-
-    if (block.type !== 'root') {
-      block.nodes.forEach(node => {
-        if (!node.nodes) {
-          if (node.type === 'open') node.isOpen = true;
-          if (node.type === 'close') node.isClose = true;
-          if (!node.nodes) node.type = 'text';
-          node.invalid = true;
-        }
-      });
-
-      // get the location of the block on parent.nodes (block's siblings)
-      const parent = stack[stack.length - 1];
-      const index = parent.nodes.indexOf(block);
-      // replace the (invalid) block with it's nodes
-      parent.nodes.splice(index, 1, ...block.nodes);
-    }
-  } while (stack.length > 0);
-
-  push({ type: 'eos' });
-  return ast;
+import { Scanner } from './scanner.js';
+
+const TAB = 9;
+const N = 10;
+const F = 12;
+const R = 13;
+const SPACE = 32;
+const EXCLAMATIONMARK = 33;    // !
+const NUMBERSIGN = 35;         // #
+const AMPERSAND = 38;          // &
+const APOSTROPHE = 39;         // '
+const LEFTPARENTHESIS = 40;    // (
+const RIGHTPARENTHESIS = 41;   // )
+const ASTERISK = 42;           // *
+const PLUSSIGN = 43;           // +
+const COMMA = 44;              // ,
+const HYPERMINUS = 45;         // -
+const LESSTHANSIGN = 60;       // <
+const GREATERTHANSIGN = 62;    // >
+const QUESTIONMARK = 63;       // ?
+const COMMERCIALAT = 64;       // @
+const LEFTSQUAREBRACKET = 91;  // [
+const RIGHTSQUAREBRACKET = 93; // ]
+const LEFTCURLYBRACKET = 123;  // {
+const VERTICALLINE = 124;      // |
+const RIGHTCURLYBRACKET = 125; // }
+const INFINITY = 8734;         // ∞
+const COMBINATOR_PRECEDENCE = {
+    ' ': 1,
+    '&&': 2,
+    '||': 3,
+    '|': 4
 };
 
-module.exports = parse;
+function readMultiplierRange(scanner) {
+    let min = null;
+    let max = null;
+
+    scanner.eat(LEFTCURLYBRACKET);
+    scanner.skipWs();
+
+    min = scanner.scanNumber(scanner);
+    scanner.skipWs();
+
+    if (scanner.charCode() === COMMA) {
+        scanner.pos++;
+        scanner.skipWs();
+
+        if (scanner.charCode() !== RIGHTCURLYBRACKET) {
+            max = scanner.scanNumber(scanner);
+            scanner.skipWs();
+        }
+    } else {
+        max = min;
+    }
+
+    scanner.eat(RIGHTCURLYBRACKET);
+
+    return {
+        min: Number(min),
+        max: max ? Number(max) : 0
+    };
+}
+
+function readMultiplier(scanner) {
+    let range = null;
+    let comma = false;
+
+    switch (scanner.charCode()) {
+        case ASTERISK:
+            scanner.pos++;
+
+            range = {
+                min: 0,
+                max: 0
+            };
+
+            break;
+
+        case PLUSSIGN:
+            scanner.pos++;
+
+            range = {
+                min: 1,
+                max: 0
+            };
+
+            break;
+
+        case QUESTIONMARK:
+            scanner.pos++;
+
+            range = {
+                min: 0,
+                max: 1
+            };
+
+            break;
+
+        case NUMBERSIGN:
+            scanner.pos++;
+
+            comma = true;
+
+            if (scanner.charCode() === LEFTCURLYBRACKET) {
+                range = readMultiplierRange(scanner);
+            } else if (scanner.charCode() === QUESTIONMARK) {
+                // https://www.w3.org/TR/css-values-4/#component-multipliers
+                // > the # and ? multipliers may be stacked as #?
+                // In this case just treat "#?" as a single multiplier
+                // { min: 0, max: 0, comma: true }
+                scanner.pos++;
+                range = {
+                    min: 0,
+                    max: 0
+                };
+            } else {
+                range = {
+                    min: 1,
+                    max: 0
+                };
+            }
+
+            break;
+
+        case LEFTCURLYBRACKET:
+            range = readMultiplierRange(scanner);
+            break;
+
+        default:
+            return null;
+    }
+
+    return {
+        type: 'Multiplier',
+        comma,
+        min: range.min,
+        max: range.max,
+        term: null
+    };
+}
+
+function maybeMultiplied(scanner, node) {
+    const multiplier = readMultiplier(scanner);
+
+    if (multiplier !== null) {
+        multiplier.term = node;
+
+        // https://www.w3.org/TR/css-values-4/#component-multipliers
+        // > The + and # multipliers may be stacked as +#;
+        // Represent "+#" as nested multipliers:
+        // { ...<multiplier #>,
+        //   term: {
+        //     ...<multipler +>,
+        //     term: node
+        //   }
+        // }
+        if (scanner.charCode() === NUMBERSIGN &&
+            scanner.charCodeAt(scanner.pos - 1) === PLUSSIGN) {
+            return maybeMultiplied(scanner, multiplier);
+        }
+
+        return multiplier;
+    }
+
+    return node;
+}
+
+function maybeToken(scanner) {
+    const ch = scanner.peek();
+
+    if (ch === '') {
+        return null;
+    }
+
+    return maybeMultiplied(scanner, {
+        type: 'Token',
+        value: ch
+    });
+}
+
+function readProperty(scanner) {
+    let name;
+
+    scanner.eat(LESSTHANSIGN);
+    scanner.eat(APOSTROPHE);
+
+    name = scanner.scanWord();
+
+    scanner.eat(APOSTROPHE);
+    scanner.eat(GREATERTHANSIGN);
+
+    return maybeMultiplied(scanner, {
+        type: 'Property',
+        name
+    });
+}
+
+// https://drafts.csswg.org/css-values-3/#numeric-ranges
+// 4.1. Range Restrictions and Range Definition Notation
+//
+// Range restrictions can be annotated in the numeric type notation using CSS bracketed
+// range notation—[min,max]—within the angle brackets, after the identifying keyword,
+// indicating a closed range between (and including) min and max.
+// For example, <integer [0, 10]> indicates an integer between 0 and 10, inclusive.
+function readTypeRange(scanner) {
+    // use null for Infinity to make AST format JSON serializable/deserializable
+    let min = null; // -Infinity
+    let max = null; // Infinity
+    let sign = 1;
+
+    scanner.eat(LEFTSQUAREBRACKET);
+
+    if (scanner.charCode() === HYPERMINUS) {
+        scanner.peek();
+        sign = -1;
+    }
+
+    if (sign == -1 && scanner.charCode() === INFINITY) {
+        scanner.peek();
+    } else {
+        min = sign * Number(scanner.scanNumber(scanner));
+
+        if (scanner.isNameCharCode()) {
+            min += scanner.scanWord();
+        }
+    }
+
+    scanner.skipWs();
+    scanner.eat(COMMA);
+    scanner.skipWs();
+
+    if (scanner.charCode() === INFINITY) {
+        scanner.peek();
+    } else {
+        sign = 1;
+
+        if (scanner.charCode() === HYPERMINUS) {
+            scanner.peek();
+            sign = -1;
+        }
+
+        max = sign * Number(scanner.scanNumber(scanner));
+
+        if (scanner.isNameCharCode()) {
+            max += scanner.scanWord();
+        }
+    }
+
+    scanner.eat(RIGHTSQUAREBRACKET);
+
+    return {
+        type: 'Range',
+        min,
+        max
+    };
+}
+
+function readType(scanner) {
+    let name;
+    let opts = null;
+
+    scanner.eat(LESSTHANSIGN);
+    name = scanner.scanWord();
+
+    // https://drafts.csswg.org/css-values-5/#boolean
+    if (name === 'boolean-expr') {
+        scanner.eat(LEFTSQUAREBRACKET);
+
+        const implicitGroup = readImplicitGroup(scanner, RIGHTSQUAREBRACKET);
+
+        scanner.eat(RIGHTSQUAREBRACKET);
+        scanner.eat(GREATERTHANSIGN);
+
+        return maybeMultiplied(scanner, {
+            type: 'Boolean',
+            term: implicitGroup.terms.length === 1
+                ? implicitGroup.terms[0]
+                : implicitGroup
+        });
+    }
+
+    if (scanner.charCode() === LEFTPARENTHESIS &&
+        scanner.nextCharCode() === RIGHTPARENTHESIS) {
+        scanner.pos += 2;
+        name += '()';
+    }
+
+    if (scanner.charCodeAt(scanner.findWsEnd(scanner.pos)) === LEFTSQUAREBRACKET) {
+        scanner.skipWs();
+        opts = readTypeRange(scanner);
+    }
+
+    scanner.eat(GREATERTHANSIGN);
+
+    return maybeMultiplied(scanner, {
+        type: 'Type',
+        name,
+        opts
+    });
+}
+
+function readKeywordOrFunction(scanner) {
+    const name = scanner.scanWord();
+
+    if (scanner.charCode() === LEFTPARENTHESIS) {
+        scanner.pos++;
+
+        return {
+            type: 'Function',
+            name
+        };
+    }
+
+    return maybeMultiplied(scanner, {
+        type: 'Keyword',
+        name
+    });
+}
+
+function regroupTerms(terms, combinators) {
+    function createGroup(terms, combinator) {
+        return {
+            type: 'Group',
+            terms,
+            combinator,
+            disallowEmpty: false,
+            explicit: false
+        };
+    }
+
+    let combinator;
+
+    combinators = Object.keys(combinators)
+        .sort((a, b) => COMBINATOR_PRECEDENCE[a] - COMBINATOR_PRECEDENCE[b]);
+
+    while (combinators.length > 0) {
+        combinator = combinators.shift();
+
+        let i = 0;
+        let subgroupStart = 0;
+
+        for (; i < terms.length; i++) {
+            const term = terms[i];
+
+            if (term.type === 'Combinator') {
+                if (term.value === combinator) {
+                    if (subgroupStart === -1) {
+                        subgroupStart = i - 1;
+                    }
+                    terms.splice(i, 1);
+                    i--;
+                } else {
+                    if (subgroupStart !== -1 && i - subgroupStart > 1) {
+                        terms.splice(
+                            subgroupStart,
+                            i - subgroupStart,
+                            createGroup(terms.slice(subgroupStart, i), combinator)
+                        );
+                        i = subgroupStart + 1;
+                    }
+                    subgroupStart = -1;
+                }
+            }
+        }
+
+        if (subgroupStart !== -1 && combinators.length) {
+            terms.splice(
+                subgroupStart,
+                i - subgroupStart,
+                createGroup(terms.slice(subgroupStart, i), combinator)
+            );
+        }
+    }
+
+    return combinator;
+}
+
+function readImplicitGroup(scanner, stopCharCode) {
+    const combinators = Object.create(null);
+    const terms = [];
+    let token;
+    let prevToken = null;
+    let prevTokenPos = scanner.pos;
+
+    while (scanner.charCode() !== stopCharCode && (token = peek(scanner, stopCharCode))) {
+        if (token.type !== 'Spaces') {
+            if (token.type === 'Combinator') {
+                // check for combinator in group beginning and double combinator sequence
+                if (prevToken === null || prevToken.type === 'Combinator') {
+                    scanner.pos = prevTokenPos;
+                    scanner.error('Unexpected combinator');
+                }
+
+                combinators[token.value] = true;
+            } else if (prevToken !== null && prevToken.type !== 'Combinator') {
+                combinators[' '] = true;  // a b
+                terms.push({
+                    type: 'Combinator',
+                    value: ' '
+                });
+            }
+
+            terms.push(token);
+            prevToken = token;
+            prevTokenPos = scanner.pos;
+        }
+    }
+
+    // check for combinator in group ending
+    if (prevToken !== null && prevToken.type === 'Combinator') {
+        scanner.pos -= prevTokenPos;
+        scanner.error('Unexpected combinator');
+    }
+
+    return {
+        type: 'Group',
+        terms,
+        combinator: regroupTerms(terms, combinators) || ' ',
+        disallowEmpty: false,
+        explicit: false
+    };
+}
+
+function readGroup(scanner, stopCharCode) {
+    let result;
+
+    scanner.eat(LEFTSQUAREBRACKET);
+    result = readImplicitGroup(scanner, stopCharCode);
+    scanner.eat(RIGHTSQUAREBRACKET);
+
+    result.explicit = true;
+
+    if (scanner.charCode() === EXCLAMATIONMARK) {
+        scanner.pos++;
+        result.disallowEmpty = true;
+    }
+
+    return result;
+}
+
+function peek(scanner, stopCharCode) {
+    let code = scanner.charCode();
+
+    switch (code) {
+        case RIGHTSQUAREBRACKET:
+            // don't eat, stop scan a group
+            break;
+
+        case LEFTSQUAREBRACKET:
+            return maybeMultiplied(scanner, readGroup(scanner, stopCharCode));
+
+        case LESSTHANSIGN:
+            return scanner.nextCharCode() === APOSTROPHE
+                ? readProperty(scanner)
+                : readType(scanner);
+
+        case VERTICALLINE:
+            return {
+                type: 'Combinator',
+                value: scanner.substringToPos(
+                    scanner.pos + (scanner.nextCharCode() === VERTICALLINE ? 2 : 1)
+                )
+            };
+
+        case AMPERSAND:
+            scanner.pos++;
+            scanner.eat(AMPERSAND);
+
+            return {
+                type: 'Combinator',
+                value: '&&'
+            };
+
+        case COMMA:
+            scanner.pos++;
+            return {
+                type: 'Comma'
+            };
+
+        case APOSTROPHE:
+            return maybeMultiplied(scanner, {
+                type: 'String',
+                value: scanner.scanString()
+            });
+
+        case SPACE:
+        case TAB:
+        case N:
+        case R:
+        case F:
+            return {
+                type: 'Spaces',
+                value: scanner.scanSpaces()
+            };
+
+        case COMMERCIALAT:
+            code = scanner.nextCharCode();
+
+            if (scanner.isNameCharCode(code)) {
+                scanner.pos++;
+                return {
+                    type: 'AtKeyword',
+                    name: scanner.scanWord()
+                };
+            }
+
+            return maybeToken(scanner);
+
+        case ASTERISK:
+        case PLUSSIGN:
+        case QUESTIONMARK:
+        case NUMBERSIGN:
+        case EXCLAMATIONMARK:
+            // prohibited tokens (used as a multiplier start)
+            break;
+
+        case LEFTCURLYBRACKET:
+            // LEFTCURLYBRACKET is allowed since mdn/data uses it w/o quoting
+            // check next char isn't a number, because it's likely a disjoined multiplier
+            code = scanner.nextCharCode();
+
+            if (code < 48 || code > 57) {
+                return maybeToken(scanner);
+            }
+
+            break;
+
+        default:
+            if (scanner.isNameCharCode(code)) {
+                return readKeywordOrFunction(scanner);
+            }
+
+            return maybeToken(scanner);
+    }
+}
+
+export function parse(source) {
+    const scanner = new Scanner(source);
+    const result = readImplicitGroup(scanner);
+
+    if (scanner.pos !== source.length) {
+        scanner.error('Unexpected input');
+    }
+
+    // reduce redundant groups with single group term
+    if (result.terms.length === 1 && result.terms[0].type === 'Group') {
+        return result.terms[0];
+    }
+
+    return result;
+};

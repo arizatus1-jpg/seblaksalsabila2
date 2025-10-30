@@ -1,5 +1,1 @@
-'use strict';
-
-const { version } = require('../package.json');
-
-exports.version = version;
+module.exports = "3.1.0";
