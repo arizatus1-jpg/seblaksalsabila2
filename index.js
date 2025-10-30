@@ -1,58 +1,34 @@
-// src/index.ts
-import { Buffer } from "buffer";
-var _serialize = (data, escapeColonStrings = true) => {
-  if (data === void 0 || data === null) {
-    return "null";
-  }
-  if (typeof data === "string") {
-    return JSON.stringify(
-      escapeColonStrings && data.startsWith(":") ? `:${data}` : data
-    );
-  }
-  if (Buffer.isBuffer(data)) {
-    return JSON.stringify(`:base64:${data.toString("base64")}`);
-  }
-  if (data?.toJSON) {
-    data = data.toJSON();
-  }
-  if (typeof data === "object") {
-    let s = "";
-    const array = Array.isArray(data);
-    s = array ? "[" : "{";
-    let first = true;
-    for (const k in data) {
-      const ignore = typeof data[k] === "function" || !array && data[k] === void 0;
-      if (!Object.hasOwn(data, k) || ignore) {
-        continue;
-      }
-      if (!first) {
-        s += ",";
-      }
-      first = false;
-      if (array) {
-        s += _serialize(data[k], escapeColonStrings);
-      } else if (data[k] !== void 0) {
-        s += `${_serialize(k, false)}:${_serialize(data[k], escapeColonStrings)}`;
-      }
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Settings = exports.walkStream = exports.walkSync = exports.walk = void 0;
+const async_1 = require("./providers/async");
+const stream_1 = require("./providers/stream");
+const sync_1 = require("./providers/sync");
+const settings_1 = require("./settings");
+exports.Settings = settings_1.default;
+function walk(directory, optionsOrSettingsOrCallback, callback) {
+    if (typeof optionsOrSettingsOrCallback === 'function') {
+        new async_1.default(directory, getSettings()).read(optionsOrSettingsOrCallback);
+        return;
     }
-    s += array ? "]" : "}";
-    return s;
-  }
-  return JSON.stringify(data);
-};
-var defaultSerialize = (data) => {
-  return _serialize(data, true);
-};
-var defaultDeserialize = (data) => JSON.parse(data, (_, value) => {
-  if (typeof value === "string") {
-    if (value.startsWith(":base64:")) {
-      return Buffer.from(value.slice(8), "base64");
+    new async_1.default(directory, getSettings(optionsOrSettingsOrCallback)).read(callback);
+}
+exports.walk = walk;
+function walkSync(directory, optionsOrSettings) {
+    const settings = getSettings(optionsOrSettings);
+    const provider = new sync_1.default(directory, settings);
+    return provider.read();
+}
+exports.walkSync = walkSync;
+function walkStream(directory, optionsOrSettings) {
+    const settings = getSettings(optionsOrSettings);
+    const provider = new stream_1.default(directory, settings);
+    return provider.read();
+}
+exports.walkStream = walkStream;
+function getSettings(settingsOrOptions = {}) {
+    if (settingsOrOptions instanceof settings_1.default) {
+        return settingsOrOptions;
     }
-    return value.startsWith(":") ? value.slice(1) : value;
-  }
-  return value;
-});
-export {
-  defaultDeserialize,
-  defaultSerialize
-};
+    return new settings_1.default(settingsOrOptions);
+}

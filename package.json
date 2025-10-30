@@ -1,55 +1,44 @@
 {
-  "name": "@keyv/serialize",
-  "version": "1.1.1",
-  "description": "Serialization for Keyv",
-  "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.js"
-    }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jaredwray/keyv.git"
-  },
-  "keywords": [
-    "keyv",
-    "serialize",
-    "key",
-    "value",
-    "store"
-  ],
-  "author": "Jared Wray <me@jaredwray.com> (https://jaredwray.com)",
+  "name": "@nodelib/fs.walk",
+  "version": "1.2.8",
+  "description": "A library for efficiently walking a directory recursively",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/jaredwray/keyv/issues"
-  },
-  "homepage": "https://github.com/jaredwray/keyv",
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.3",
-    "@vitest/coverage-v8": "^3.2.4",
-    "rimraf": "^6.0.1",
-    "tsd": "^0.33.0",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
-    "@keyv/test-suite": "^2.1.1",
-    "keyv": "^5.5.0"
-  },
-  "tsd": {
-    "directory": "test"
+  "repository": "https://github.com/nodelib/nodelib/tree/master/packages/fs/fs.walk",
+  "keywords": [
+    "NodeLib",
+    "fs",
+    "FileSystem",
+    "file system",
+    "walk",
+    "scanner",
+    "crawler"
+  ],
+  "engines": {
+    "node": ">= 8"
   },
   "files": [
-    "dist",
-    "LICENSE"
+    "out/**",
+    "!out/**/*.map",
+    "!out/**/*.spec.*",
+    "!out/**/tests/**"
   ],
+  "main": "out/index.js",
+  "typings": "out/index.d.ts",
   "scripts": {
-    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --clean",
-    "test": "biome check --write && vitest run --coverage",
-    "test:ci": "biome check && vitest --run --sequence.setupFiles=list --coverage",
-    "clean": "rimraf ./node_modules ./coverage ./dist"
-  }
+    "clean": "rimraf {tsconfig.tsbuildinfo,out}",
+    "lint": "eslint \"src/**/*.ts\" --cache",
+    "compile": "tsc -b .",
+    "compile:watch": "tsc -p . --watch --sourceMap",
+    "test": "mocha \"out/**/*.spec.js\" -s 0",
+    "build": "npm run clean && npm run compile && npm run lint && npm test",
+    "watch": "npm run clean && npm run compile:watch"
+  },
+  "dependencies": {
+    "@nodelib/fs.scandir": "2.1.5",
+    "fastq": "^1.6.0"
+  },
+  "devDependencies": {
+    "@nodelib/fs.macchiato": "1.0.4"
+  },
+  "gitHead": "1e5bad48565da2b06b8600e744324ea240bf49d8"
 }
