@@ -1,10 +1,16 @@
-import type { Vocabulary } from "../../types";
-import { JTDTypeError } from "./type";
-import { JTDEnumError } from "./enum";
-import { JTDElementsError } from "./elements";
-import { JTDPropertiesError } from "./properties";
-import { JTDDiscriminatorError } from "./discriminator";
-import { JTDValuesError } from "./values";
-declare const jtdVocabulary: Vocabulary;
-export default jtdVocabulary;
-export type JTDErrorObject = JTDTypeError | JTDEnumError | JTDElementsError | JTDPropertiesError | JTDDiscriminatorError | JTDValuesError;
+import type { ErrorObject, Vocabulary } from "../../types";
+import { LimitNumberError } from "./limitNumber";
+import { MultipleOfError } from "./multipleOf";
+import { PatternError } from "./pattern";
+import { RequiredError } from "./required";
+import { UniqueItemsError } from "./uniqueItems";
+import { ConstError } from "./const";
+import { EnumError } from "./enum";
+declare const validation: Vocabulary;
+export default validation;
+type LimitError = ErrorObject<"maxItems" | "minItems" | "minProperties" | "maxProperties" | "minLength" | "maxLength", {
+    limit: number;
+}, number | {
+    $data: string;
+}>;
+export type ValidationKeywordError = LimitError | LimitNumberError | MultipleOfError | PatternError | RequiredError | UniqueItemsError | ConstError | EnumError;

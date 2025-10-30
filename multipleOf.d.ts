@@ -1,7 +1,7 @@
 import type { CodeKeywordDefinition, ErrorObject } from "../../types";
-export type EnumError = ErrorObject<"enum", {
-    allowedValues: any[];
-}, any[] | {
+export type MultipleOfError = ErrorObject<"multipleOf", {
+    multipleOf: number;
+}, number | {
     $data: string;
 }>;
 declare const def: CodeKeywordDefinition;

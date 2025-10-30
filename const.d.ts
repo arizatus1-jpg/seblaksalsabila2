@@ -1,8 +1,6 @@
 import type { CodeKeywordDefinition, ErrorObject } from "../../types";
-export type EnumError = ErrorObject<"enum", {
-    allowedValues: any[];
-}, any[] | {
-    $data: string;
+export type ConstError = ErrorObject<"const", {
+    allowedValue: any;
 }>;
 declare const def: CodeKeywordDefinition;
 export default def;

@@ -1,7 +1,7 @@
 import type { CodeKeywordDefinition, ErrorObject } from "../../types";
-export type EnumError = ErrorObject<"enum", {
-    allowedValues: any[];
-}, any[] | {
+export type RequiredError = ErrorObject<"required", {
+    missingProperty: string;
+}, string[] | {
     $data: string;
 }>;
 declare const def: CodeKeywordDefinition;
