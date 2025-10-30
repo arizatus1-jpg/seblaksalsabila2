@@ -1,9 +1,11 @@
 {
-    "compilerOptions": {
-        "allowJs": true,
-        "checkJs": true,
-        "strict": true,
-        "noImplicitAny": true,
-        "target": "es2015"
-    }
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "noEmit": true,
+    "strict": true
+  },
+  "files": [
+    "./reusify.d.ts"
+  ]
 }
