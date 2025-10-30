@@ -2,31 +2,110 @@
 // please instead edit the ESM counterpart and rebuild with Rollup (npm run build).
 'use strict';
 
-const _interopNamespaceDefaultOnly = e => Object.freeze({ __proto__: null, default: e });
+const valueParser = require('postcss-value-parser');
+const nodeFieldIndices = require('../../utils/nodeFieldIndices.cjs');
+const regexes = require('../../utils/regexes.cjs');
+const validateTypes = require('../../utils/validateTypes.cjs');
+const keywords = require('../../reference/keywords.cjs');
+const isStandardSyntaxAtRule = require('../../utils/isStandardSyntaxAtRule.cjs');
+const isStandardSyntaxDeclaration = require('../../utils/isStandardSyntaxDeclaration.cjs');
+const isStandardSyntaxValue = require('../../utils/isStandardSyntaxValue.cjs');
+const report = require('../../utils/report.cjs');
+const ruleMessages = require('../../utils/ruleMessages.cjs');
+const validateOptions = require('../../utils/validateOptions.cjs');
 
-/** @type {import('stylelint').PublicApi['formatters']} */
-const formatters = {
-	get compact() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./compactFormatter.cjs'))).then((m) => m.default);
-	},
-	get github() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./githubFormatter.cjs'))).then((m) => m.default);
-	},
-	get json() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./jsonFormatter.cjs'))).then((m) => m.default);
-	},
-	get string() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./stringFormatter.cjs'))).then((m) => m.default);
-	},
-	get tap() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./tapFormatter.cjs'))).then((m) => m.default);
-	},
-	get unix() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./unixFormatter.cjs'))).then((m) => m.default);
-	},
-	get verbose() {
-		return Promise.resolve().then(() => /*#__PURE__*/_interopNamespaceDefaultOnly(require('./verboseFormatter.cjs'))).then((m) => m.default);
-	},
+const ruleName = 'container-name-pattern';
+
+const messages = ruleMessages(ruleName, {
+	expected: (containerName, pattern) => `Expected "${containerName}" to match pattern "${pattern}"`,
+});
+
+const meta = {
+	url: 'https://stylelint.io/user-guide/rules/container-name-pattern',
 };
 
-module.exports = formatters;
+const KEYWORDS = new Set(['and', 'or', 'none', 'not']);
+
+/** @type {import('stylelint').CoreRules[ruleName]} */
+const rule = (primary) => {
+	return (root, result) => {
+		const validOptions = validateOptions(result, ruleName, {
+			actual: primary,
+			possible: [validateTypes.isRegExp, validateTypes.isString],
+		});
+
+		if (!validOptions) return;
+
+		const regex = validateTypes.isString(primary) ? new RegExp(primary) : primary;
+
+		const languageCssWideKeywords =
+			result.stylelint.config?.languageOptions?.syntax?.cssWideKeywords ?? [];
+
+		const cssWideKeywords = new Set([...keywords.basicKeywords, ...languageCssWideKeywords]);
+
+		root.walkDecls(regexes.propertyRegexes.containerNameAndShorthandName, (decl) => {
+			if (!isStandardSyntaxDeclaration(decl)) return;
+
+			const parsedValue = valueParser(decl.value);
+
+			let isContainerType = false;
+
+			parsedValue.walk(({ sourceIndex, type, value }) => {
+				if (isContainerType) return;
+
+				if (type === 'div' && value === '/') isContainerType = true;
+
+				if (type !== 'word') return false;
+
+				if (cssWideKeywords.has(value.toLowerCase())) return;
+
+				if (!isStandardSyntaxValue(value)) return;
+
+				if (regex.test(value)) return;
+
+				complain(nodeFieldIndices.declarationValueIndex(decl) + sourceIndex, value, decl);
+			});
+		});
+
+		root.walkAtRules(regexes.atRuleRegexes.containerName, (atRule) => {
+			if (!isStandardSyntaxAtRule(atRule)) return;
+
+			const { params } = atRule;
+
+			const parsedValue = valueParser(params);
+
+			parsedValue.walk(({ sourceIndex, type, value }) => {
+				if (type !== 'word') return false;
+
+				if (KEYWORDS.has(value.toLowerCase())) return;
+
+				if (regex.test(value)) return;
+
+				complain(nodeFieldIndices.atRuleParamIndex(atRule) + sourceIndex, value, atRule);
+			});
+		});
+
+		/**
+		 * @param {number} index
+		 * @param {string} containerName
+		 * @param {import('postcss').Declaration|import('postcss').AtRule} node
+		 */
+		function complain(index, containerName, node) {
+			report({
+				result,
+				ruleName,
+				message: messages.expected,
+				messageArgs: [containerName, primary],
+				node,
+				index,
+				endIndex: index + containerName.length,
+			});
+		}
+	};
+};
+
+rule.ruleName = ruleName;
+rule.messages = messages;
+rule.meta = meta;
+
+module.exports = rule;
