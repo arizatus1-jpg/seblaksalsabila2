@@ -1,72 +1,46 @@
-# resolve-from [![Build Status](https://travis-ci.org/sindresorhus/resolve-from.svg?branch=master)](https://travis-ci.org/sindresorhus/resolve-from)
+# strip-ansi [![Build Status](https://travis-ci.org/chalk/strip-ansi.svg?branch=master)](https://travis-ci.org/chalk/strip-ansi)
 
-> Resolve the path of a module like [`require.resolve()`](https://nodejs.org/api/globals.html#globals_require_resolve) but from a given path
+> Strip [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) from a string
 
 
 ## Install
 
 ```
-$ npm install resolve-from
+$ npm install strip-ansi
 ```
 
 
 ## Usage
 
 ```js
-const resolveFrom = require('resolve-from');
+const stripAnsi = require('strip-ansi');
 
-// There is a file at `./foo/bar.js`
+stripAnsi('\u001B[4mUnicorn\u001B[0m');
+//=> 'Unicorn'
 
-resolveFrom('foo', './bar');
-//=> '/Users/sindresorhus/dev/test/foo/bar.js'
+stripAnsi('\u001B]8;;https://github.com\u0007Click\u001B]8;;\u0007');
+//=> 'Click'
 ```
 
 
-## API
+## strip-ansi for enterprise
 
-### resolveFrom(fromDirectory, moduleId)
+Available as part of the Tidelift Subscription.
 
-Like `require()`, throws when the module can't be found.
-
-### resolveFrom.silent(fromDirectory, moduleId)
-
-Returns `undefined` instead of throwing when the module can't be found.
-
-#### fromDirectory
-
-Type: `string`
-
-Directory to resolve from.
-
-#### moduleId
-
-Type: `string`
-
-What you would use in `require()`.
-
-
-## Tip
-
-Create a partial using a bound function if you want to resolve from the same `fromDirectory` multiple times:
-
-```js
-const resolveFromFoo = resolveFrom.bind(null, 'foo');
-
-resolveFromFoo('./bar');
-resolveFromFoo('./baz');
-```
+The maintainers of strip-ansi and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/npm-strip-ansi?utm_source=npm-strip-ansi&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
 
 
 ## Related
 
-- [resolve-cwd](https://github.com/sindresorhus/resolve-cwd) - Resolve the path of a module from the current working directory
-- [import-from](https://github.com/sindresorhus/import-from) - Import a module from a given path
-- [import-cwd](https://github.com/sindresorhus/import-cwd) - Import a module from the current working directory
-- [resolve-pkg](https://github.com/sindresorhus/resolve-pkg) - Resolve the path of a package regardless of it having an entry point
-- [import-lazy](https://github.com/sindresorhus/import-lazy) - Import a module lazily
-- [resolve-global](https://github.com/sindresorhus/resolve-global) - Resolve the path of a globally installed module
+- [strip-ansi-cli](https://github.com/chalk/strip-ansi-cli) - CLI for this module
+- [strip-ansi-stream](https://github.com/chalk/strip-ansi-stream) - Streaming version of this module
+- [has-ansi](https://github.com/chalk/has-ansi) - Check if a string has ANSI escape codes
+- [ansi-regex](https://github.com/chalk/ansi-regex) - Regular expression for matching ANSI escape codes
+- [chalk](https://github.com/chalk/chalk) - Terminal string styling done right
 
 
-## License
+## Maintainers
 
-MIT © [Sindre Sorhus](https://sindresorhus.com)
+- [Sindre Sorhus](https://github.com/sindresorhus)
+- [Josh Junon](https://github.com/qix-)
+
