@@ -1,254 +1,336 @@
-import {
-    isDigit,
-    isHexDigit,
-    isUppercaseLetter,
-    isName,
-    isWhiteSpace,
-    isValidEscape
-} from './char-code-definitions.js';
+'use strict'
 
-function getCharCode(source, offset) {
-    return offset < source.length ? source.charCodeAt(offset) : 0;
+/** @type {(value: string) => boolean} */
+const isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu)
+
+/** @type {(value: string) => boolean} */
+const isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u)
+
+/**
+ * @param {Array<string>} input
+ * @returns {string}
+ */
+function stringArrayToHexStripped (input) {
+  let acc = ''
+  let code = 0
+  let i = 0
+
+  for (i = 0; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (code === 48) {
+      continue
+    }
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+    break
+  }
+
+  for (i += 1; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+  }
+  return acc
 }
 
-export function getNewlineLength(source, offset, code) {
-    if (code === 13 /* \r */ && getCharCode(source, offset + 1) === 10 /* \n */) {
-        return 2;
-    }
+/**
+ * @typedef {Object} GetIPV6Result
+ * @property {boolean} error - Indicates if there was an error parsing the IPv6 address.
+ * @property {string} address - The parsed IPv6 address.
+ * @property {string} [zone] - The zone identifier, if present.
+ */
 
-    return 1;
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+const nonSimpleDomain = RegExp.prototype.test.bind(/[^!"$&'()*+,\-.;=_`a-z{}~]/u)
+
+/**
+ * @param {Array<string>} buffer
+ * @returns {boolean}
+ */
+function consumeIsZone (buffer) {
+  buffer.length = 0
+  return true
 }
 
-export function cmpChar(testStr, offset, referenceCode) {
-    let code = testStr.charCodeAt(offset);
-
-    // code.toLowerCase() for A..Z
-    if (isUppercaseLetter(code)) {
-        code = code | 32;
+/**
+ * @param {Array<string>} buffer
+ * @param {Array<string>} address
+ * @param {GetIPV6Result} output
+ * @returns {boolean}
+ */
+function consumeHextets (buffer, address, output) {
+  if (buffer.length) {
+    const hex = stringArrayToHexStripped(buffer)
+    if (hex !== '') {
+      address.push(hex)
+    } else {
+      output.error = true
+      return false
     }
-
-    return code === referenceCode;
+    buffer.length = 0
+  }
+  return true
 }
 
-export function cmpStr(testStr, start, end, referenceStr) {
-    if (end - start !== referenceStr.length) {
-        return false;
+/**
+ * @param {string} input
+ * @returns {GetIPV6Result}
+ */
+function getIPV6 (input) {
+  let tokenCount = 0
+  const output = { error: false, address: '', zone: '' }
+  /** @type {Array<string>} */
+  const address = []
+  /** @type {Array<string>} */
+  const buffer = []
+  let endipv6Encountered = false
+  let endIpv6 = false
+
+  let consume = consumeHextets
+
+  for (let i = 0; i < input.length; i++) {
+    const cursor = input[i]
+    if (cursor === '[' || cursor === ']') { continue }
+    if (cursor === ':') {
+      if (endipv6Encountered === true) {
+        endIpv6 = true
+      }
+      if (!consume(buffer, address, output)) { break }
+      if (++tokenCount > 7) {
+        // not valid
+        output.error = true
+        break
+      }
+      if (i > 0 && input[i - 1] === ':') {
+        endipv6Encountered = true
+      }
+      address.push(':')
+      continue
+    } else if (cursor === '%') {
+      if (!consume(buffer, address, output)) { break }
+      // switch to zone detection
+      consume = consumeIsZone
+    } else {
+      buffer.push(cursor)
+      continue
     }
-
-    if (start < 0 || end > testStr.length) {
-        return false;
+  }
+  if (buffer.length) {
+    if (consume === consumeIsZone) {
+      output.zone = buffer.join('')
+    } else if (endIpv6) {
+      address.push(buffer.join(''))
+    } else {
+      address.push(stringArrayToHexStripped(buffer))
     }
+  }
+  output.address = address.join('')
+  return output
+}
 
-    for (let i = start; i < end; i++) {
-        const referenceCode = referenceStr.charCodeAt(i - start);
-        let testCode = testStr.charCodeAt(i);
+/**
+ * @typedef {Object} NormalizeIPv6Result
+ * @property {string} host - The normalized host.
+ * @property {string} [escapedHost] - The escaped host.
+ * @property {boolean} isIPV6 - Indicates if the host is an IPv6 address.
+ */
 
-        // testCode.toLowerCase() for A..Z
-        if (isUppercaseLetter(testCode)) {
-            testCode = testCode | 32;
+/**
+ * @param {string} host
+ * @returns {NormalizeIPv6Result}
+ */
+function normalizeIPv6 (host) {
+  if (findToken(host, ':') < 2) { return { host, isIPV6: false } }
+  const ipv6 = getIPV6(host)
+
+  if (!ipv6.error) {
+    let newHost = ipv6.address
+    let escapedHost = ipv6.address
+    if (ipv6.zone) {
+      newHost += '%' + ipv6.zone
+      escapedHost += '%25' + ipv6.zone
+    }
+    return { host: newHost, isIPV6: true, escapedHost }
+  } else {
+    return { host, isIPV6: false }
+  }
+}
+
+/**
+ * @param {string} str
+ * @param {string} token
+ * @returns {number}
+ */
+function findToken (str, token) {
+  let ind = 0
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === token) ind++
+  }
+  return ind
+}
+
+/**
+ * @param {string} path
+ * @returns {string}
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.2.4
+ */
+function removeDotSegments (path) {
+  let input = path
+  const output = []
+  let nextSlash = -1
+  let len = 0
+
+  // eslint-disable-next-line no-cond-assign
+  while (len = input.length) {
+    if (len === 1) {
+      if (input === '.') {
+        break
+      } else if (input === '/') {
+        output.push('/')
+        break
+      } else {
+        output.push(input)
+        break
+      }
+    } else if (len === 2) {
+      if (input[0] === '.') {
+        if (input[1] === '.') {
+          break
+        } else if (input[1] === '/') {
+          input = input.slice(2)
+          continue
         }
-
-        if (testCode !== referenceCode) {
-            return false;
+      } else if (input[0] === '/') {
+        if (input[1] === '.' || input[1] === '/') {
+          output.push('/')
+          break
         }
-    }
-
-    return true;
-}
-
-export function findWhiteSpaceStart(source, offset) {
-    for (; offset >= 0; offset--) {
-        if (!isWhiteSpace(source.charCodeAt(offset))) {
-            break;
+      }
+    } else if (len === 3) {
+      if (input === '/..') {
+        if (output.length !== 0) {
+          output.pop()
         }
+        output.push('/')
+        break
+      }
     }
-
-    return offset + 1;
-}
-
-export function findWhiteSpaceEnd(source, offset) {
-    for (; offset < source.length; offset++) {
-        if (!isWhiteSpace(source.charCodeAt(offset))) {
-            break;
+    if (input[0] === '.') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(3)
+          continue
         }
-    }
-
-    return offset;
-}
-
-export function findDecimalNumberEnd(source, offset) {
-    for (; offset < source.length; offset++) {
-        if (!isDigit(source.charCodeAt(offset))) {
-            break;
-        }
-    }
-
-    return offset;
-}
-
-// § 4.3.7. Consume an escaped code point
-export function consumeEscaped(source, offset) {
-    // It assumes that the U+005C REVERSE SOLIDUS (\) has already been consumed and
-    // that the next input code point has already been verified to be part of a valid escape.
-    offset += 2;
-
-    // hex digit
-    if (isHexDigit(getCharCode(source, offset - 1))) {
-        // Consume as many hex digits as possible, but no more than 5.
-        // Note that this means 1-6 hex digits have been consumed in total.
-        for (const maxOffset = Math.min(source.length, offset + 5); offset < maxOffset; offset++) {
-            if (!isHexDigit(getCharCode(source, offset))) {
-                break;
+      } else if (input[1] === '/') {
+        input = input.slice(2)
+        continue
+      }
+    } else if (input[0] === '/') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(2)
+          continue
+        } else if (input[2] === '.') {
+          if (input[3] === '/') {
+            input = input.slice(3)
+            if (output.length !== 0) {
+              output.pop()
             }
+            continue
+          }
         }
-
-        // If the next input code point is whitespace, consume it as well.
-        const code = getCharCode(source, offset);
-        if (isWhiteSpace(code)) {
-            offset += getNewlineLength(source, offset, code);
-        }
+      }
     }
 
-    return offset;
+    // Rule 2E: Move normal path segment to output
+    if ((nextSlash = input.indexOf('/', 1)) === -1) {
+      output.push(input)
+      break
+    } else {
+      output.push(input.slice(0, nextSlash))
+      input = input.slice(nextSlash)
+    }
+  }
+
+  return output.join('')
 }
 
-// §4.3.11. Consume a name
-// Note: This algorithm does not do the verification of the first few code points that are necessary
-// to ensure the returned code points would constitute an <ident-token>. If that is the intended use,
-// ensure that the stream starts with an identifier before calling this algorithm.
-export function consumeName(source, offset) {
-    // Let result initially be an empty string.
-    // Repeatedly consume the next input code point from the stream:
-    for (; offset < source.length; offset++) {
-        const code = source.charCodeAt(offset);
-
-        // name code point
-        if (isName(code)) {
-            // Append the code point to result.
-            continue;
-        }
-
-        // the stream starts with a valid escape
-        if (isValidEscape(code, getCharCode(source, offset + 1))) {
-            // Consume an escaped code point. Append the returned code point to result.
-            offset = consumeEscaped(source, offset) - 1;
-            continue;
-        }
-
-        // anything else
-        // Reconsume the current input code point. Return result.
-        break;
-    }
-
-    return offset;
+/**
+ * @param {import('../types/index').URIComponent} component
+ * @param {boolean} esc
+ * @returns {import('../types/index').URIComponent}
+ */
+function normalizeComponentEncoding (component, esc) {
+  const func = esc !== true ? escape : unescape
+  if (component.scheme !== undefined) {
+    component.scheme = func(component.scheme)
+  }
+  if (component.userinfo !== undefined) {
+    component.userinfo = func(component.userinfo)
+  }
+  if (component.host !== undefined) {
+    component.host = func(component.host)
+  }
+  if (component.path !== undefined) {
+    component.path = func(component.path)
+  }
+  if (component.query !== undefined) {
+    component.query = func(component.query)
+  }
+  if (component.fragment !== undefined) {
+    component.fragment = func(component.fragment)
+  }
+  return component
 }
 
-// §4.3.12. Consume a number
-export function consumeNumber(source, offset) {
-    let code = source.charCodeAt(offset);
+/**
+ * @param {import('../types/index').URIComponent} component
+ * @returns {string|undefined}
+ */
+function recomposeAuthority (component) {
+  const uriTokens = []
 
-    // 2. If the next input code point is U+002B PLUS SIGN (+) or U+002D HYPHEN-MINUS (-),
-    // consume it and append it to repr.
-    if (code === 0x002B || code === 0x002D) {
-        code = source.charCodeAt(offset += 1);
+  if (component.userinfo !== undefined) {
+    uriTokens.push(component.userinfo)
+    uriTokens.push('@')
+  }
+
+  if (component.host !== undefined) {
+    let host = unescape(component.host)
+    if (!isIPv4(host)) {
+      const ipV6res = normalizeIPv6(host)
+      if (ipV6res.isIPV6 === true) {
+        host = `[${ipV6res.escapedHost}]`
+      } else {
+        host = component.host
+      }
     }
+    uriTokens.push(host)
+  }
 
-    // 3. While the next input code point is a digit, consume it and append it to repr.
-    if (isDigit(code)) {
-        offset = findDecimalNumberEnd(source, offset + 1);
-        code = source.charCodeAt(offset);
-    }
+  if (typeof component.port === 'number' || typeof component.port === 'string') {
+    uriTokens.push(':')
+    uriTokens.push(String(component.port))
+  }
 
-    // 4. If the next 2 input code points are U+002E FULL STOP (.) followed by a digit, then:
-    if (code === 0x002E && isDigit(source.charCodeAt(offset + 1))) {
-        // 4.1 Consume them.
-        // 4.2 Append them to repr.
-        offset += 2;
+  return uriTokens.length ? uriTokens.join('') : undefined
+};
 
-        // 4.3 Set type to "number".
-        // TODO
-
-        // 4.4 While the next input code point is a digit, consume it and append it to repr.
-
-        offset = findDecimalNumberEnd(source, offset);
-    }
-
-    // 5. If the next 2 or 3 input code points are U+0045 LATIN CAPITAL LETTER E (E)
-    // or U+0065 LATIN SMALL LETTER E (e), ... , followed by a digit, then:
-    if (cmpChar(source, offset, 101 /* e */)) {
-        let sign = 0;
-        code = source.charCodeAt(offset + 1);
-
-        // ... optionally followed by U+002D HYPHEN-MINUS (-) or U+002B PLUS SIGN (+) ...
-        if (code === 0x002D || code === 0x002B) {
-            sign = 1;
-            code = source.charCodeAt(offset + 2);
-        }
-
-        // ... followed by a digit
-        if (isDigit(code)) {
-            // 5.1 Consume them.
-            // 5.2 Append them to repr.
-
-            // 5.3 Set type to "number".
-            // TODO
-
-            // 5.4 While the next input code point is a digit, consume it and append it to repr.
-            offset = findDecimalNumberEnd(source, offset + 1 + sign + 1);
-        }
-    }
-
-    return offset;
-}
-
-// § 4.3.14. Consume the remnants of a bad url
-// ... its sole use is to consume enough of the input stream to reach a recovery point
-// where normal tokenizing can resume.
-export function consumeBadUrlRemnants(source, offset) {
-    // Repeatedly consume the next input code point from the stream:
-    for (; offset < source.length; offset++) {
-        const code = source.charCodeAt(offset);
-
-        // U+0029 RIGHT PARENTHESIS ())
-        // EOF
-        if (code === 0x0029) {
-            // Return.
-            offset++;
-            break;
-        }
-
-        if (isValidEscape(code, getCharCode(source, offset + 1))) {
-            // Consume an escaped code point.
-            // Note: This allows an escaped right parenthesis ("\)") to be encountered
-            // without ending the <bad-url-token>. This is otherwise identical to
-            // the "anything else" clause.
-            offset = consumeEscaped(source, offset);
-        }
-    }
-
-    return offset;
-}
-
-// § 4.3.7. Consume an escaped code point
-// Note: This algorithm assumes that escaped is valid without leading U+005C REVERSE SOLIDUS (\)
-export function decodeEscaped(escaped) {
-    // Single char escaped that's not a hex digit
-    if (escaped.length === 1 && !isHexDigit(escaped.charCodeAt(0))) {
-        return escaped[0];
-    }
-
-    // Interpret the hex digits as a hexadecimal number.
-    let code = parseInt(escaped, 16);
-
-    if (
-        (code === 0) ||                       // If this number is zero,
-        (code >= 0xD800 && code <= 0xDFFF) || // or is for a surrogate,
-        (code > 0x10FFFF)                     // or is greater than the maximum allowed code point
-    ) {
-        // ... return U+FFFD REPLACEMENT CHARACTER
-        code = 0xFFFD;
-    }
-
-    // Otherwise, return the code point with that value.
-    return String.fromCodePoint(code);
+module.exports = {
+  nonSimpleDomain,
+  recomposeAuthority,
+  normalizeComponentEncoding,
+  removeDotSegments,
+  isIPv4,
+  isUUID,
+  normalizeIPv6,
+  stringArrayToHexStripped
 }

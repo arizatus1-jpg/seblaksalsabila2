@@ -1,40 +1,60 @@
-/// <reference types="node" />
-import * as taskManager from './managers/tasks';
-import { Options as OptionsInternal } from './settings';
-import { Entry as EntryInternal, FileSystemAdapter as FileSystemAdapterInternal, Pattern as PatternInternal } from './types';
-type EntryObjectModePredicate = {
-    [TKey in keyof Pick<OptionsInternal, 'objectMode'>]-?: true;
-};
-type EntryStatsPredicate = {
-    [TKey in keyof Pick<OptionsInternal, 'stats'>]-?: true;
-};
-type EntryObjectPredicate = EntryObjectModePredicate | EntryStatsPredicate;
-declare function FastGlob(source: PatternInternal | PatternInternal[], options: OptionsInternal & EntryObjectPredicate): Promise<EntryInternal[]>;
-declare function FastGlob(source: PatternInternal | PatternInternal[], options?: OptionsInternal): Promise<string[]>;
-declare namespace FastGlob {
-    type Options = OptionsInternal;
-    type Entry = EntryInternal;
-    type Task = taskManager.Task;
-    type Pattern = PatternInternal;
-    type FileSystemAdapter = FileSystemAdapterInternal;
-    const glob: typeof FastGlob;
-    const globSync: typeof sync;
-    const globStream: typeof stream;
-    const async: typeof FastGlob;
-    function sync(source: PatternInternal | PatternInternal[], options: OptionsInternal & EntryObjectPredicate): EntryInternal[];
-    function sync(source: PatternInternal | PatternInternal[], options?: OptionsInternal): string[];
-    function stream(source: PatternInternal | PatternInternal[], options?: OptionsInternal): NodeJS.ReadableStream;
-    function generateTasks(source: PatternInternal | PatternInternal[], options?: OptionsInternal): Task[];
-    function isDynamicPattern(source: PatternInternal, options?: OptionsInternal): boolean;
-    function escapePath(source: string): PatternInternal;
-    function convertPathToPattern(source: string): PatternInternal;
-    namespace posix {
-        function escapePath(source: string): PatternInternal;
-        function convertPathToPattern(source: string): PatternInternal;
-    }
-    namespace win32 {
-        function escapePath(source: string): PatternInternal;
-        function convertPathToPattern(source: string): PatternInternal;
-    }
+type FastUri = typeof fastUri
+
+declare namespace fastUri {
+  export interface URIComponent {
+    scheme?: string;
+    userinfo?: string;
+    host?: string;
+    port?: number | string;
+    path?: string;
+    query?: string;
+    fragment?: string;
+    reference?: string;
+    nid?: string;
+    nss?: string;
+    resourceName?: string;
+    secure?: boolean;
+    uuid?: string;
+    error?: string;
+  }
+  export interface Options {
+    scheme?: string;
+    reference?: string;
+    unicodeSupport?: boolean;
+    domainHost?: boolean;
+    absolutePath?: boolean;
+    tolerant?: boolean;
+    skipEscape?: boolean;
+    nid?: string;
+  }
+
+  /**
+   * @deprecated Use Options instead
+   */
+  export type options = Options
+  /**
+   * @deprecated Use URIComponent instead
+   */
+  export type URIComponents = URIComponent
+
+  export function normalize (uri: string, opts?: Options): string
+  export function normalize (uri: URIComponent, opts?: Options): URIComponent
+  export function normalize (uri: any, opts?: Options): any
+
+  export function resolve (baseURI: string, relativeURI: string, options?: Options): string
+
+  export function resolveComponent (base: URIComponent, relative: URIComponent, options?: Options, skipNormalization?: boolean): URIComponent
+
+  export function parse (uri: string, opts?: Options): URIComponent
+
+  export function serialize (component: URIComponent, opts?: Options): string
+
+  export function equal (uriA: string, uriB: string): boolean
+
+  export function resolve (base: string, path: string): string
+
+  export const fastUri: FastUri
+  export { fastUri as default }
 }
-export = FastGlob;
+
+export = fastUri
