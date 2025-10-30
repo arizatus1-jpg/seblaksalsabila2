@@ -1,169 +1,168 @@
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export abstract class _CodeOrName {
-  abstract readonly str: string
-  abstract readonly names: UsedNames
-  abstract toString(): string
-  abstract emptyStr(): boolean
+import type {AnySchema, SchemaMap} from "../types"
+import type {SchemaCxt} from "../compile"
+import type {KeywordCxt} from "../compile/validate"
+import {CodeGen, _, and, or, not, nil, strConcat, getProperty, Code, Name} from "../compile/codegen"
+import {alwaysValidSchema, Type} from "../compile/util"
+import N from "../compile/names"
+import {useFunc} from "../compile/util"
+export function checkReportMissingProp(cxt: KeywordCxt, prop: string): void {
+  const {gen, data, it} = cxt
+  gen.if(noPropertyInData(gen, data, prop, it.opts.ownProperties), () => {
+    cxt.setParams({missingProperty: _`${prop}`}, true)
+    cxt.error()
+  })
 }
 
-export const IDENTIFIER = /^[a-z$_][a-z$_0-9]*$/i
+export function checkMissingProp(
+  {gen, data, it: {opts}}: KeywordCxt,
+  properties: string[],
+  missing: Name
+): Code {
+  return or(
+    ...properties.map((prop) =>
+      and(noPropertyInData(gen, data, prop, opts.ownProperties), _`${missing} = ${prop}`)
+    )
+  )
+}
 
-export class Name extends _CodeOrName {
-  readonly str: string
-  constructor(s: string) {
-    super()
-    if (!IDENTIFIER.test(s)) throw new Error("CodeGen: name must be a valid identifier")
-    this.str = s
+export function reportMissingProp(cxt: KeywordCxt, missing: Name): void {
+  cxt.setParams({missingProperty: missing}, true)
+  cxt.error()
+}
+
+export function hasPropFunc(gen: CodeGen): Name {
+  return gen.scopeValue("func", {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    ref: Object.prototype.hasOwnProperty,
+    code: _`Object.prototype.hasOwnProperty`,
+  })
+}
+
+export function isOwnProperty(gen: CodeGen, data: Name, property: Name | string): Code {
+  return _`${hasPropFunc(gen)}.call(${data}, ${property})`
+}
+
+export function propertyInData(
+  gen: CodeGen,
+  data: Name,
+  property: Name | string,
+  ownProperties?: boolean
+): Code {
+  const cond = _`${data}${getProperty(property)} !== undefined`
+  return ownProperties ? _`${cond} && ${isOwnProperty(gen, data, property)}` : cond
+}
+
+export function noPropertyInData(
+  gen: CodeGen,
+  data: Name,
+  property: Name | string,
+  ownProperties?: boolean
+): Code {
+  const cond = _`${data}${getProperty(property)} === undefined`
+  return ownProperties ? or(cond, not(isOwnProperty(gen, data, property))) : cond
+}
+
+export function allSchemaProperties(schemaMap?: SchemaMap): string[] {
+  return schemaMap ? Object.keys(schemaMap).filter((p) => p !== "__proto__") : []
+}
+
+export function schemaProperties(it: SchemaCxt, schemaMap: SchemaMap): string[] {
+  return allSchemaProperties(schemaMap).filter(
+    (p) => !alwaysValidSchema(it, schemaMap[p] as AnySchema)
+  )
+}
+
+export function callValidateCode(
+  {schemaCode, data, it: {gen, topSchemaRef, schemaPath, errorPath}, it}: KeywordCxt,
+  func: Code,
+  context: Code,
+  passSchema?: boolean
+): Code {
+  const dataAndSchema = passSchema ? _`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data
+  const valCxt: [Name, Code | number][] = [
+    [N.instancePath, strConcat(N.instancePath, errorPath)],
+    [N.parentData, it.parentData],
+    [N.parentDataProperty, it.parentDataProperty],
+    [N.rootData, N.rootData],
+  ]
+  if (it.opts.dynamicRef) valCxt.push([N.dynamicAnchors, N.dynamicAnchors])
+  const args = _`${dataAndSchema}, ${gen.object(...valCxt)}`
+  return context !== nil ? _`${func}.call(${context}, ${args})` : _`${func}(${args})`
+}
+
+const newRegExp = _`new RegExp`
+
+export function usePattern({gen, it: {opts}}: KeywordCxt, pattern: string): Name {
+  const u = opts.unicodeRegExp ? "u" : ""
+  const {regExp} = opts.code
+  const rx = regExp(pattern, u)
+
+  return gen.scopeValue("pattern", {
+    key: rx.toString(),
+    ref: rx,
+    code: _`${regExp.code === "new RegExp" ? newRegExp : useFunc(gen, regExp)}(${pattern}, ${u})`,
+  })
+}
+
+export function validateArray(cxt: KeywordCxt): Name {
+  const {gen, data, keyword, it} = cxt
+  const valid = gen.name("valid")
+  if (it.allErrors) {
+    const validArr = gen.let("valid", true)
+    validateItems(() => gen.assign(validArr, false))
+    return validArr
   }
+  gen.var(valid, true)
+  validateItems(() => gen.break())
+  return valid
 
-  toString(): string {
-    return this.str
-  }
-
-  emptyStr(): boolean {
-    return false
-  }
-
-  get names(): UsedNames {
-    return {[this.str]: 1}
+  function validateItems(notValid: () => void): void {
+    const len = gen.const("len", _`${data}.length`)
+    gen.forRange("i", 0, len, (i) => {
+      cxt.subschema(
+        {
+          keyword,
+          dataProp: i,
+          dataPropType: Type.Num,
+        },
+        valid
+      )
+      gen.if(not(valid), notValid)
+    })
   }
 }
 
-export class _Code extends _CodeOrName {
-  readonly _items: readonly CodeItem[]
-  private _str?: string
-  private _names?: UsedNames
+export function validateUnion(cxt: KeywordCxt): void {
+  const {gen, schema, keyword, it} = cxt
+  /* istanbul ignore if */
+  if (!Array.isArray(schema)) throw new Error("ajv implementation error")
+  const alwaysValid = schema.some((sch: AnySchema) => alwaysValidSchema(it, sch))
+  if (alwaysValid && !it.opts.unevaluated) return
 
-  constructor(code: string | readonly CodeItem[]) {
-    super()
-    this._items = typeof code === "string" ? [code] : code
-  }
+  const valid = gen.let("valid", false)
+  const schValid = gen.name("_valid")
 
-  toString(): string {
-    return this.str
-  }
+  gen.block(() =>
+    schema.forEach((_sch: AnySchema, i: number) => {
+      const schCxt = cxt.subschema(
+        {
+          keyword,
+          schemaProp: i,
+          compositeRule: true,
+        },
+        schValid
+      )
+      gen.assign(valid, _`${valid} || ${schValid}`)
+      const merged = cxt.mergeValidEvaluated(schCxt, schValid)
+      // can short-circuit if `unevaluatedProperties/Items` not supported (opts.unevaluated !== true)
+      // or if all properties and items were evaluated (it.props === true && it.items === true)
+      if (!merged) gen.if(not(valid))
+    })
+  )
 
-  emptyStr(): boolean {
-    if (this._items.length > 1) return false
-    const item = this._items[0]
-    return item === "" || item === '""'
-  }
-
-  get str(): string {
-    return (this._str ??= this._items.reduce((s: string, c: CodeItem) => `${s}${c}`, ""))
-  }
-
-  get names(): UsedNames {
-    return (this._names ??= this._items.reduce((names: UsedNames, c) => {
-      if (c instanceof Name) names[c.str] = (names[c.str] || 0) + 1
-      return names
-    }, {}))
-  }
-}
-
-export type CodeItem = Name | string | number | boolean | null
-
-export type UsedNames = Record<string, number | undefined>
-
-export type Code = _Code | Name
-
-export type SafeExpr = Code | number | boolean | null
-
-export const nil = new _Code("")
-
-type CodeArg = SafeExpr | string | undefined
-
-export function _(strs: TemplateStringsArray, ...args: CodeArg[]): _Code {
-  const code: CodeItem[] = [strs[0]]
-  let i = 0
-  while (i < args.length) {
-    addCodeArg(code, args[i])
-    code.push(strs[++i])
-  }
-  return new _Code(code)
-}
-
-const plus = new _Code("+")
-
-export function str(strs: TemplateStringsArray, ...args: (CodeArg | string[])[]): _Code {
-  const expr: CodeItem[] = [safeStringify(strs[0])]
-  let i = 0
-  while (i < args.length) {
-    expr.push(plus)
-    addCodeArg(expr, args[i])
-    expr.push(plus, safeStringify(strs[++i]))
-  }
-  optimize(expr)
-  return new _Code(expr)
-}
-
-export function addCodeArg(code: CodeItem[], arg: CodeArg | string[]): void {
-  if (arg instanceof _Code) code.push(...arg._items)
-  else if (arg instanceof Name) code.push(arg)
-  else code.push(interpolate(arg))
-}
-
-function optimize(expr: CodeItem[]): void {
-  let i = 1
-  while (i < expr.length - 1) {
-    if (expr[i] === plus) {
-      const res = mergeExprItems(expr[i - 1], expr[i + 1])
-      if (res !== undefined) {
-        expr.splice(i - 1, 3, res)
-        continue
-      }
-      expr[i++] = "+"
-    }
-    i++
-  }
-}
-
-function mergeExprItems(a: CodeItem, b: CodeItem): CodeItem | undefined {
-  if (b === '""') return a
-  if (a === '""') return b
-  if (typeof a == "string") {
-    if (b instanceof Name || a[a.length - 1] !== '"') return
-    if (typeof b != "string") return `${a.slice(0, -1)}${b}"`
-    if (b[0] === '"') return a.slice(0, -1) + b.slice(1)
-    return
-  }
-  if (typeof b == "string" && b[0] === '"' && !(a instanceof Name)) return `"${a}${b.slice(1)}`
-  return
-}
-
-export function strConcat(c1: Code, c2: Code): Code {
-  return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str`${c1}${c2}`
-}
-
-// TODO do not allow arrays here
-function interpolate(x?: string | string[] | number | boolean | null): SafeExpr | string {
-  return typeof x == "number" || typeof x == "boolean" || x === null
-    ? x
-    : safeStringify(Array.isArray(x) ? x.join(",") : x)
-}
-
-export function stringify(x: unknown): Code {
-  return new _Code(safeStringify(x))
-}
-
-export function safeStringify(x: unknown): string {
-  return JSON.stringify(x)
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029")
-}
-
-export function getProperty(key: Code | string | number): Code {
-  return typeof key == "string" && IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`
-}
-
-//Does best effort to format the name properly
-export function getEsmExportName(key: Code | string | number): Code {
-  if (typeof key == "string" && IDENTIFIER.test(key)) {
-    return new _Code(`${key}`)
-  }
-  throw new Error(`CodeGen: invalid export name: ${key}, use explicit $id name mapping`)
-}
-
-export function regexpCode(rx: RegExp): Code {
-  return new _Code(rx.toString())
+  cxt.result(
+    valid,
+    () => cxt.reset(),
+    () => cxt.error(true)
+  )
 }

@@ -1,16 +1,12 @@
-import type {SchemaObject} from "../../types"
+import type {ErrorObject} from "../../types"
 
-export type SchemaObjectMap = {[Ref in string]?: SchemaObject}
+export enum DiscrError {
+  Tag = "tag",
+  Mapping = "mapping",
+}
 
-export const jtdForms = [
-  "elements",
-  "values",
+export type DiscrErrorObj<E extends DiscrError> = ErrorObject<
   "discriminator",
-  "properties",
-  "optionalProperties",
-  "enum",
-  "type",
-  "ref",
-] as const
-
-export type JTDForm = (typeof jtdForms)[number]
+  {error: E; tag: string; tagValue: unknown},
+  string
+>
