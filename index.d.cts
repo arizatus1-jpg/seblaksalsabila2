@@ -1,492 +1,378 @@
-type Logger = {
-    trace: (message: string, ...arguments_: unknown[]) => void;
-    debug: (message: string, ...arguments_: unknown[]) => void;
-    info: (message: string, ...arguments_: unknown[]) => void;
-    warn: (message: string, ...arguments_: unknown[]) => void;
-    error: (message: string, ...arguments_: unknown[]) => void;
-    fatal: (message: string, ...arguments_: unknown[]) => void;
-};
-
-type IEventEmitter = {
-    /**
-     * Registers a listener for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to listen for.
-     * @param listener - A callback function that will be invoked when the event is emitted.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.on('data', (message) => {
-     *   console.log(message);
-     * });
-     */
-    on(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Alias for `on`. Registers a listener for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to listen for.
-     * @param listener - A callback function that will be invoked when the event is emitted.
-     * @returns The current instance of EventEmitter for method chaining.
-     */
-    addListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Registers a one-time listener for the specified event. The listener is removed after it is called once.
-     *
-     * @param eventName - The name (or symbol) of the event to listen for.
-     * @param listener - A callback function that will be invoked once when the event is emitted.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.once('close', () => {
-     *   console.log('The connection was closed.');
-     * });
-     */
-    once(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Removes a previously registered listener for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to stop listening for.
-     * @param listener - The specific callback function to remove.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.off('data', myListener);
-     */
-    off(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Alias for `off`. Removes a previously registered listener for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to stop listening for.
-     * @param listener - The specific callback function to remove.
-     * @returns The current instance of EventEmitter for method chaining.
-     */
-    removeListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Emits the specified event, invoking all registered listeners with the provided arguments.
-     *
-     * @param eventName - The name (or symbol) of the event to emit.
-     * @param args - Arguments passed to each listener.
-     * @returns `true` if the event had listeners, `false` otherwise.
-     *
-     * @example
-     * emitter.emit('data', 'Hello World');
-     */
-    emit(eventName: string | symbol, ...arguments_: any[]): boolean;
-    /**
-     * Returns the number of listeners registered for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event.
-     * @returns The number of registered listeners.
-     *
-     * @example
-     * const count = emitter.listenerCount('data');
-     * console.log(count); // e.g., 2
-     */
-    listenerCount(eventName: string | symbol): number;
-    /**
-     * Removes all listeners for the specified event. If no event is specified, it removes all listeners for all events.
-     *
-     * @param eventName - (Optional) The name (or symbol) of the event.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.removeAllListeners('data');
-     */
-    removeAllListeners(eventName?: string | symbol): IEventEmitter;
-    /**
-     * Returns an array of event names for which listeners have been registered.
-     *
-     * @returns An array of event names (or symbols).
-     *
-     * @example
-     * const events = emitter.eventNames();
-     * console.log(events); // e.g., ['data', 'close']
-     */
-    eventNames(): Array<string | symbol>;
-    /**
-     * Returns an array of listeners registered for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event.
-     * @returns An array of listener functions.
-     *
-     * @example
-     * const listeners = emitter.listeners('data');
-     * console.log(listeners.length); // e.g., 2
-     */
-    listeners(eventName: string | symbol): Array<(...arguments_: any[]) => void>;
-    /**
-     * Returns an array of raw listeners for the specified event. This includes listeners wrapped by internal mechanisms (e.g., once-only listeners).
-     *
-     * @param eventName - The name (or symbol) of the event.
-     * @returns An array of raw listener functions.
-     *
-     * @example
-     * const rawListeners = emitter.rawListeners('data');
-     */
-    rawListeners(eventName: string | symbol): Array<(...arguments_: any[]) => void>;
-    /**
-     * Adds a listener to the beginning of the listeners array for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to listen for.
-     * @param listener - A callback function that will be invoked when the event is emitted.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.prependListener('data', (message) => {
-     *   console.log('This will run first.');
-     * });
-     */
-    prependListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-    /**
-     * Adds a one-time listener to the beginning of the listeners array for the specified event.
-     *
-     * @param eventName - The name (or symbol) of the event to listen for.
-     * @param listener - A callback function that will be invoked once when the event is emitted.
-     * @returns The current instance of EventEmitter for method chaining.
-     *
-     * @example
-     * emitter.prependOnceListener('data', (message) => {
-     *   console.log('This will run first and only once.');
-     * });
-     */
-    prependOnceListener(eventName: string | symbol, listener: (...arguments_: any[]) => void): IEventEmitter;
-};
 type EventListener = (...arguments_: any[]) => void;
-type EventEmitterOptions = {
-    /**
-     * Logger instance for logging errors.
-     */
-    logger?: Logger;
-    /**
-     * Whether to throw an error when emit 'error' and there are no listeners. Default is false and only emits an error event.
-     */
-    throwOnEmitError?: boolean;
-};
-declare class Eventified implements IEventEmitter {
-    private readonly _eventListeners;
-    private _maxListeners;
-    private _logger?;
-    private _throwOnEmitError;
-    constructor(options?: EventEmitterOptions);
-    /**
-     * Gets the logger
-     * @returns {Logger}
-     */
-    get logger(): Logger | undefined;
-    /**
-     * Sets the logger
-     * @param {Logger} logger
-     */
-    set logger(logger: Logger | undefined);
-    /**
-     * Gets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
-     * @returns {boolean}
-     */
-    get throwOnEmitError(): boolean;
-    /**
-     * Sets whether an error should be thrown when an emit throws an error. Default is false and only emits an error event.
-     * @param {boolean} value
-     */
-    set throwOnEmitError(value: boolean);
-    /**
-     * Adds a handler function for a specific event that will run only once
-     * @param {string | symbol} eventName
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    once(eventName: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Gets the number of listeners for a specific event. If no event is provided, it returns the total number of listeners
-     * @param {string} eventName The event name. Not required
-     * @returns {number} The number of listeners
-     */
-    listenerCount(eventName?: string | symbol): number;
-    /**
-     * Gets an array of event names
-     * @returns {Array<string | symbol>} An array of event names
-     */
-    eventNames(): Array<string | symbol>;
-    /**
-     * Gets an array of listeners for a specific event. If no event is provided, it returns all listeners
-     * @param {string} [event] (Optional) The event name
-     * @returns {EventListener[]} An array of listeners
-     */
-    rawListeners(event?: string | symbol): EventListener[];
-    /**
-     * Prepends a listener to the beginning of the listeners array for the specified event
-     * @param {string | symbol} eventName
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    prependListener(eventName: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Prepends a one-time listener to the beginning of the listeners array for the specified event
-     * @param {string | symbol} eventName
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    prependOnceListener(eventName: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Gets the maximum number of listeners that can be added for a single event
-     * @returns {number} The maximum number of listeners
-     */
+declare class EventManager {
+    _eventListeners: Map<string, EventListener[]>;
+    _maxListeners: number;
+    constructor();
     maxListeners(): number;
-    /**
-     * Adds a listener for a specific event. It is an alias for the on() method
-     * @param {string | symbol} event
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    addListener(event: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Adds a listener for a specific event
-     * @param {string | symbol} event
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    on(event: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Removes a listener for a specific event. It is an alias for the off() method
-     * @param {string | symbol} event
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    removeListener(event: string, listener: EventListener): IEventEmitter;
-    /**
-     * Removes a listener for a specific event
-     * @param {string | symbol} event
-     * @param {EventListener} listener
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    off(event: string | symbol, listener: EventListener): IEventEmitter;
-    /**
-     * Calls all listeners for a specific event
-     * @param {string | symbol} event
-     * @param arguments_ The arguments to pass to the listeners
-     * @returns {boolean} Returns true if the event had listeners, false otherwise
-     */
-    emit(event: string | symbol, ...arguments_: any[]): boolean;
-    /**
-     * Gets all listeners for a specific event. If no event is provided, it returns all listeners
-     * @param {string} [event] (Optional) The event name
-     * @returns {EventListener[]} An array of listeners
-     */
-    listeners(event: string | symbol): EventListener[];
-    /**
-     * Removes all listeners for a specific event. If no event is provided, it removes all listeners
-     * @param {string} [event] (Optional) The event name
-     * @returns {IEventEmitter} returns the instance of the class for chaining
-     */
-    removeAllListeners(event?: string | symbol): IEventEmitter;
-    /**
-     * Sets the maximum number of listeners that can be added for a single event
-     * @param {number} n The maximum number of listeners
-     * @returns {void}
-     */
+    addListener(event: string, listener: EventListener): void;
+    on(event: string, listener: EventListener): this;
+    removeListener(event: string, listener: EventListener): void;
+    off(event: string, listener: EventListener): void;
+    once(event: string, listener: EventListener): void;
+    emit(event: string, ...arguments_: any[]): void;
+    listeners(event: string): EventListener[];
+    removeAllListeners(event?: string): void;
     setMaxListeners(n: number): void;
-    /**
-     * Gets all listeners
-     * @returns {EventListener[]} An array of listeners
-     */
-    getAllListeners(): EventListener[];
 }
 
-type Hook = (...arguments_: any[]) => Promise<void> | void;
-type HookEntry = {
-    /**
-     * The event name for the hook
-     */
-    event: string;
-    /**
-     * The handler function for the hook
-     */
-    handler: Hook;
+type HookHandler = (...arguments_: any[]) => void;
+declare class HooksManager extends EventManager {
+    _hookHandlers: Map<string, HookHandler[]>;
+    constructor();
+    addHandler(event: string, handler: HookHandler): void;
+    removeHandler(event: string, handler: HookHandler): void;
+    trigger(event: string, data: any): void;
+    get handlers(): Map<string, HookHandler[]>;
+}
+
+declare class StatsManager extends EventManager {
+    enabled: boolean;
+    hits: number;
+    misses: number;
+    sets: number;
+    deletes: number;
+    errors: number;
+    constructor(enabled?: boolean);
+    hit(): void;
+    miss(): void;
+    set(): void;
+    delete(): void;
+    hitsOrMisses<T>(array: Array<T | undefined>): void;
+    reset(): void;
+}
+
+type DeserializedData<Value> = {
+    value?: Value;
+    expires?: number | undefined;
 };
-type HookifiedOptions = {
+type CompressionAdapter = {
+    compress(value: any, options?: any): Promise<any>;
+    decompress(value: any, options?: any): Promise<any>;
+    serialize<Value>(data: DeserializedData<Value>): Promise<string> | string;
+    deserialize<Value>(data: string): Promise<DeserializedData<Value> | undefined> | DeserializedData<Value> | undefined;
+};
+type Serialize = <Value>(data: DeserializedData<Value>) => Promise<string> | string;
+type Deserialize = <Value>(data: string) => Promise<DeserializedData<Value> | undefined> | DeserializedData<Value> | undefined;
+declare enum KeyvHooks {
+    PRE_SET = "preSet",
+    POST_SET = "postSet",
+    PRE_GET = "preGet",
+    POST_GET = "postGet",
+    PRE_GET_MANY = "preGetMany",
+    POST_GET_MANY = "postGetMany",
+    PRE_GET_RAW = "preGetRaw",
+    POST_GET_RAW = "postGetRaw",
+    PRE_GET_MANY_RAW = "preGetManyRaw",
+    POST_GET_MANY_RAW = "postGetManyRaw",
+    PRE_DELETE = "preDelete",
+    POST_DELETE = "postDelete"
+}
+type KeyvEntry = {
     /**
-     * Whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
+     * Key to set.
      */
-    throwHookErrors?: boolean;
+    key: string;
     /**
-     * Whether to enforce that all hook names start with 'before' or 'after'. Default is false.
-     * @type {boolean}
-     * @default false
+     * Value to set.
      */
-    enforceBeforeAfter?: boolean;
+    value: any;
     /**
-     * Map of deprecated hook names to deprecation messages. When a deprecated hook is used, a warning will be emitted.
-     * @type {Map<string, string>}
-     * @default new Map()
+     * Time to live in milliseconds.
      */
-    deprecatedHooks?: Map<string, string>;
+    ttl?: number;
+};
+type StoredDataNoRaw<Value> = Value | undefined;
+type StoredDataRaw<Value> = DeserializedData<Value> | undefined;
+type StoredData<Value> = StoredDataNoRaw<Value> | StoredDataRaw<Value>;
+type IEventEmitter = {
+    on(event: string, listener: (...arguments_: any[]) => void): IEventEmitter;
+};
+type KeyvStoreAdapter = {
+    opts: any;
+    namespace?: string;
+    get<Value>(key: string): Promise<StoredData<Value> | undefined>;
+    set(key: string, value: any, ttl?: number): any;
+    setMany?(values: Array<{
+        key: string;
+        value: any;
+        ttl?: number;
+    }>): Promise<void>;
+    delete(key: string): Promise<boolean>;
+    clear(): Promise<void>;
+    has?(key: string): Promise<boolean>;
+    hasMany?(keys: string[]): Promise<boolean[]>;
+    getMany?<Value>(keys: string[]): Promise<Array<StoredData<Value | undefined>>>;
+    disconnect?(): Promise<void>;
+    deleteMany?(key: string[]): Promise<boolean>;
+    iterator?<Value>(namespace?: string): AsyncGenerator<Array<string | Awaited<Value> | undefined>, void>;
+} & IEventEmitter;
+type KeyvOptions = {
     /**
-     * Whether to allow deprecated hooks to be registered and executed. Default is true.
-     * @type {boolean}
+     * Emit errors
      * @default true
      */
-    allowDeprecated?: boolean;
-} & EventEmitterOptions;
-declare class Hookified extends Eventified {
-    private readonly _hooks;
-    private _throwHookErrors;
-    private _enforceBeforeAfter;
-    private _deprecatedHooks;
-    private _allowDeprecated;
-    constructor(options?: HookifiedOptions);
+    emitErrors?: boolean;
     /**
-     * Gets all hooks
-     * @returns {Map<string, Hook[]>}
+     * Namespace for the current instance.
+     * @default 'keyv'
      */
-    get hooks(): Map<string, Hook[]>;
+    namespace?: string;
     /**
-     * Gets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
-     * @returns {boolean}
+     * A custom serialization function.
+     * @default defaultSerialize using JSON.stringify
      */
-    get throwHookErrors(): boolean;
+    serialize?: Serialize;
     /**
-     * Sets whether an error should be thrown when a hook throws an error. Default is false and only emits an error event.
-     * @param {boolean} value
+     * A custom deserialization function.
+     * @default defaultDeserialize using JSON.parse
      */
-    set throwHookErrors(value: boolean);
+    deserialize?: Deserialize;
     /**
-     * Gets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
-     * @returns {boolean}
+     * The storage adapter instance to be used by Keyv.
+     * @default new Map() - in-memory store
+     */
+    store?: KeyvStoreAdapter | Map<any, any> | any;
+    /**
+     * Default TTL. Can be overridden by specifying a TTL on `.set()`.
+     * @default undefined
+     */
+    ttl?: number;
+    /**
+     * Enable compression option
      * @default false
      */
-    get enforceBeforeAfter(): boolean;
+    compression?: CompressionAdapter | any;
     /**
-     * Sets whether to enforce that all hook names start with 'before' or 'after'. Default is false.
-     * @param {boolean} value
+     * Enable or disable statistics (default is false)
+     * @default false
      */
-    set enforceBeforeAfter(value: boolean);
+    stats?: boolean;
     /**
-     * Gets the map of deprecated hook names to deprecation messages.
-     * @returns {Map<string, string>}
+     * Enable or disable key prefixing (default is true)
+     * @default true
      */
-    get deprecatedHooks(): Map<string, string>;
+    useKeyPrefix?: boolean;
     /**
-     * Sets the map of deprecated hook names to deprecation messages.
-     * @param {Map<string, string>} value
+     * Will enable throwing errors on methods in addition to emitting them.
+     * @default false
      */
-    set deprecatedHooks(value: Map<string, string>);
+    throwOnErrors?: boolean;
+};
+type KeyvOptions_ = Omit<KeyvOptions, "store"> & {
+    store: KeyvStoreAdapter | (Map<any, any> & KeyvStoreAdapter);
+};
+type IteratorFunction = (argument: any) => AsyncGenerator<any, void>;
+declare class Keyv<GenericValue = any> extends EventManager {
+    opts: KeyvOptions_;
+    iterator?: IteratorFunction;
+    hooks: HooksManager;
+    stats: StatsManager;
     /**
-     * Gets whether deprecated hooks are allowed to be registered and executed. Default is true.
-     * @returns {boolean}
+     * Time to live in milliseconds
      */
-    get allowDeprecated(): boolean;
+    private _ttl?;
     /**
-     * Sets whether deprecated hooks are allowed to be registered and executed. Default is true.
-     * @param {boolean} value
+     * Namespace
      */
-    set allowDeprecated(value: boolean);
+    private _namespace?;
     /**
-     * Validates hook event name if enforceBeforeAfter is enabled
-     * @param {string} event - The event name to validate
-     * @throws {Error} If enforceBeforeAfter is true and event doesn't start with 'before' or 'after'
+     * Store
      */
-    private validateHookName;
+    private _store;
+    private _serialize;
+    private _deserialize;
+    private _compression;
+    private _useKeyPrefix;
+    private _throwOnErrors;
     /**
-     * Checks if a hook is deprecated and emits a warning if it is
-     * @param {string} event - The event name to check
-     * @returns {boolean} - Returns true if the hook should proceed, false if it should be blocked
+     * Keyv Constructor
+     * @param {KeyvStoreAdapter | KeyvOptions | Map<any, any>} store  to be provided or just the options
+     * @param {Omit<KeyvOptions, 'store'>} [options] if you provide the store you can then provide the Keyv Options
      */
-    private checkDeprecatedHook;
+    constructor(store?: KeyvStoreAdapter | KeyvOptions | Map<any, any>, options?: Omit<KeyvOptions, "store">);
     /**
-     * Adds a handler function for a specific event
-     * @param {string} event
-     * @param {Hook} handler - this can be async or sync
+     * Keyv Constructor
+     * @param {KeyvOptions} options to be provided
+     */
+    constructor(options?: KeyvOptions);
+    /**
+     * Get the current store
+     */
+    get store(): KeyvStoreAdapter | Map<any, any> | any;
+    /**
+     * Set the current store. This will also set the namespace, event error handler, and generate the iterator. If the store is not valid it will throw an error.
+     * @param {KeyvStoreAdapter | Map<any, any> | any} store the store to set
+     */
+    set store(store: KeyvStoreAdapter | Map<any, any> | any);
+    /**
+     * Get the current compression function
+     * @returns {CompressionAdapter} The current compression function
+     */
+    get compression(): CompressionAdapter | undefined;
+    /**
+     * Set the current compression function
+     * @param {CompressionAdapter} compress The compression function to set
+     */
+    set compression(compress: CompressionAdapter | undefined);
+    /**
+     * Get the current namespace.
+     * @returns {string | undefined} The current namespace.
+     */
+    get namespace(): string | undefined;
+    /**
+     * Set the current namespace.
+     * @param {string | undefined} namespace The namespace to set.
+     */
+    set namespace(namespace: string | undefined);
+    /**
+     * Get the current TTL.
+     * @returns {number} The current TTL.
+     */
+    get ttl(): number | undefined;
+    /**
+     * Set the current TTL.
+     * @param {number} ttl The TTL to set.
+     */
+    set ttl(ttl: number | undefined);
+    /**
+     * Get the current serialize function.
+     * @returns {Serialize} The current serialize function.
+     */
+    get serialize(): Serialize | undefined;
+    /**
+     * Set the current serialize function.
+     * @param {Serialize} serialize The serialize function to set.
+     */
+    set serialize(serialize: Serialize | undefined);
+    /**
+     * Get the current deserialize function.
+     * @returns {Deserialize} The current deserialize function.
+     */
+    get deserialize(): Deserialize | undefined;
+    /**
+     * Set the current deserialize function.
+     * @param {Deserialize} deserialize The deserialize function to set.
+     */
+    set deserialize(deserialize: Deserialize | undefined);
+    /**
+     * Get the current useKeyPrefix value. This will enable or disable key prefixing.
+     * @returns {boolean} The current useKeyPrefix value.
+     * @default true
+     */
+    get useKeyPrefix(): boolean;
+    /**
+     * Set the current useKeyPrefix value. This will enable or disable key prefixing.
+     * @param {boolean} value The useKeyPrefix value to set.
+     */
+    set useKeyPrefix(value: boolean);
+    /**
+     * Get the current throwErrors value. This will enable or disable throwing errors on methods in addition to emitting them.
+     * @return {boolean} The current throwOnErrors value.
+     */
+    get throwOnErrors(): boolean;
+    /**
+     * Set the current throwOnErrors value. This will enable or disable throwing errors on methods in addition to emitting them.
+     * @param {boolean} value The throwOnErrors value to set.
+     */
+    set throwOnErrors(value: boolean);
+    generateIterator(iterator: IteratorFunction): IteratorFunction;
+    _checkIterableAdapter(): boolean;
+    _getKeyPrefix(key: string): string;
+    _getKeyPrefixArray(keys: string[]): string[];
+    _getKeyUnprefix(key: string): string;
+    _isValidStorageAdapter(store: KeyvStoreAdapter | any): boolean;
+    /**
+     * Get the Value of a Key
+     * @param {string | string[]} key passing in a single key or multiple as an array
+     * @param {{raw: boolean} | undefined} options can pass in to return the raw value by setting { raw: true }
+     */
+    get<Value = GenericValue>(key: string, options?: {
+        raw: false;
+    }): Promise<StoredDataNoRaw<Value>>;
+    get<Value = GenericValue>(key: string, options?: {
+        raw: true;
+    }): Promise<StoredDataRaw<Value>>;
+    get<Value = GenericValue>(key: string[], options?: {
+        raw: false;
+    }): Promise<Array<StoredDataNoRaw<Value>>>;
+    get<Value = GenericValue>(key: string[], options?: {
+        raw: true;
+    }): Promise<Array<StoredDataRaw<Value>>>;
+    /**
+     * Get many values of keys
+     * @param {string[]} keys passing in a single key or multiple as an array
+     * @param {{raw: boolean} | undefined} options can pass in to return the raw value by setting { raw: true }
+     */
+    getMany<Value = GenericValue>(keys: string[], options?: {
+        raw: false;
+    }): Promise<Array<StoredDataNoRaw<Value>>>;
+    getMany<Value = GenericValue>(keys: string[], options?: {
+        raw: true;
+    }): Promise<Array<StoredDataRaw<Value>>>;
+    /**
+     * Get the raw value of a key. This is the replacement for setting raw to true in the get() method.
+     * @param {string} key the key to get
+     * @returns {Promise<StoredDataRaw<Value> | undefined>} will return a StoredDataRaw<Value> or undefined if the key does not exist or is expired.
+     */
+    getRaw<Value = GenericValue>(key: string): Promise<StoredDataRaw<Value> | undefined>;
+    /**
+     * Get the raw values of many keys. This is the replacement for setting raw to true in the getMany() method.
+     * @param {string[]} keys the keys to get
+     * @returns {Promise<Array<StoredDataRaw<Value>>>} will return an array of StoredDataRaw<Value> or undefined if the key does not exist or is expired.
+     */
+    getManyRaw<Value = GenericValue>(keys: string[]): Promise<Array<StoredDataRaw<Value>>>;
+    /**
+     * Set an item to the store
+     * @param {string | Array<KeyvEntry>} key the key to use. If you pass in an array of KeyvEntry it will set many items
+     * @param {Value} value the value of the key
+     * @param {number} [ttl] time to live in milliseconds
+     * @returns {boolean} if it sets then it will return a true. On failure will return false.
+     */
+    set<Value = GenericValue>(key: string, value: Value, ttl?: number): Promise<boolean>;
+    /**
+     * Set many items to the store
+     * @param {Array<KeyvEntry>} entries the entries to set
+     * @returns {boolean[]} will return an array of booleans if it sets then it will return a true. On failure will return false.
+     */
+    setMany<Value = GenericValue>(entries: KeyvEntry[]): Promise<boolean[]>;
+    /**
+     * Delete an Entry
+     * @param {string | string[]} key the key to be deleted. if an array it will delete many items
+     * @returns {boolean} will return true if item or items are deleted. false if there is an error
+     */
+    delete(key: string | string[]): Promise<boolean>;
+    /**
+     * Delete many items from the store
+     * @param {string[]} keys the keys to be deleted
+     * @returns {boolean} will return true if item or items are deleted. false if there is an error
+     */
+    deleteMany(keys: string[]): Promise<boolean>;
+    /**
+     * Clear the store
      * @returns {void}
      */
-    onHook(event: string, handler: Hook): void;
+    clear(): Promise<void>;
     /**
-     * Adds a handler function for a specific event that runs before all other handlers
-     * @param {HookEntry} hookEntry
-     * @returns {void}
+     * Has a key
+     * @param {string} key the key to check
+     * @returns {boolean} will return true if the key exists
      */
-    onHookEntry(hookEntry: HookEntry): void;
+    has(key: string[]): Promise<boolean[]>;
+    has(key: string): Promise<boolean>;
     /**
-     * Alias for onHook. This is provided for compatibility with other libraries that use the `addHook` method.
-     * @param {string} event
-     * @param {Hook} handler - this can be async or sync
-     * @returns {void}
+     * Check if many keys exist
+     * @param {string[]} keys the keys to check
+     * @returns {boolean[]} will return an array of booleans if the keys exist
      */
-    addHook(event: string, handler: Hook): void;
+    hasMany(keys: string[]): Promise<boolean[]>;
     /**
-     * Adds a handler function for a specific event
-     * @param {Array<HookEntry>} hooks
-     * @returns {void}
-     */
-    onHooks(hooks: HookEntry[]): void;
-    /**
-     * Adds a handler function for a specific event that runs before all other handlers
-     * @param {string} event
-     * @param {Hook} handler - this can be async or sync
-     * @returns {void}
-     */
-    prependHook(event: string, handler: Hook): void;
-    /**
-     * Adds a handler that only executes once for a specific event before all other handlers
-     * @param event
-     * @param handler
-     */
-    prependOnceHook(event: string, handler: Hook): void;
-    /**
-     * Adds a handler that only executes once for a specific event
-     * @param event
-     * @param handler
-     */
-    onceHook(event: string, handler: Hook): void;
-    /**
-     * Removes a handler function for a specific event
-     * @param {string} event
-     * @param {Hook} handler
-     * @returns {void}
-     */
-    removeHook(event: string, handler: Hook): void;
-    /**
-     * Removes all handlers for a specific event
-     * @param {Array<HookEntry>} hooks
-     * @returns {void}
-     */
-    removeHooks(hooks: HookEntry[]): void;
-    /**
-     * Calls all handlers for a specific event
-     * @param {string} event
-     * @param {T[]} arguments_
+     * Will disconnect the store. This is only available if the store has a disconnect method
      * @returns {Promise<void>}
      */
-    hook<T>(event: string, ...arguments_: T[]): Promise<void>;
-    /**
-     * Prepends the word `before` to your hook. Example is event is `test`, the before hook is `before:test`.
-     * @param {string} event - The event name
-     * @param {T[]} arguments_ - The arguments to pass to the hook
-     */
-    beforeHook<T>(event: string, ...arguments_: T[]): Promise<void>;
-    /**
-     * Prepends the word `after` to your hook. Example is event is `test`, the after hook is `after:test`.
-     * @param {string} event - The event name
-     * @param {T[]} arguments_ - The arguments to pass to the hook
-     */
-    afterHook<T>(event: string, ...arguments_: T[]): Promise<void>;
-    /**
-     * Calls all handlers for a specific event. This is an alias for `hook` and is provided for
-     * compatibility with other libraries that use the `callHook` method.
-     * @param {string} event
-     * @param {T[]} arguments_
-     * @returns {Promise<void>}
-     */
-    callHook<T>(event: string, ...arguments_: T[]): Promise<void>;
-    /**
-     * Gets all hooks for a specific event
-     * @param {string} event
-     * @returns {Hook[]}
-     */
-    getHooks(event: string): Hook[] | undefined;
-    /**
-     * Removes all hooks
-     * @returns {void}
-     */
-    clearHooks(): void;
+    disconnect(): Promise<void>;
+    emit(event: string, ...arguments_: any[]): void;
+    serializeData<T>(data: DeserializedData<T>): Promise<string | DeserializedData<T>>;
+    deserializeData<T>(data: string | DeserializedData<T>): Promise<DeserializedData<T> | undefined>;
 }
 
-export { type EventListener, Eventified, type Hook, type HookEntry, Hookified, type HookifiedOptions, type Logger };
+export { type CompressionAdapter, type Deserialize, type DeserializedData, type IEventEmitter, Keyv, type KeyvEntry, KeyvHooks, type KeyvOptions, type KeyvStoreAdapter, type Serialize, type StoredData, type StoredDataNoRaw, type StoredDataRaw, Keyv as default };

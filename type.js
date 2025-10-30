@@ -1,69 +1,66 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.intRange = void 0;
-const codegen_1 = require("../../compile/codegen");
-const timestamp_1 = require("../../runtime/timestamp");
-const util_1 = require("../../compile/util");
-const metadata_1 = require("./metadata");
-const error_1 = require("./error");
-exports.intRange = {
-    int8: [-128, 127, 3],
-    uint8: [0, 255, 3],
-    int16: [-32768, 32767, 5],
-    uint16: [0, 65535, 5],
-    int32: [-2147483648, 2147483647, 10],
-    uint32: [0, 4294967295, 10],
-};
-const error = {
-    message: (cxt) => (0, error_1.typeErrorMessage)(cxt, cxt.schema),
-    params: (cxt) => (0, error_1.typeErrorParams)(cxt, cxt.schema),
-};
-function timestampCode(cxt) {
-    const { gen, data, it } = cxt;
-    const { timestamp, allowDate } = it.opts;
-    if (timestamp === "date")
-        return (0, codegen_1._) `${data} instanceof Date `;
-    const vts = (0, util_1.useFunc)(gen, timestamp_1.default);
-    const allowDateArg = allowDate ? (0, codegen_1._) `, true` : codegen_1.nil;
-    const validString = (0, codegen_1._) `typeof ${data} == "string" && ${vts}(${data}${allowDateArg})`;
-    return timestamp === "string" ? validString : (0, codegen_1.or)((0, codegen_1._) `${data} instanceof Date`, validString);
+'use strict';
+
+var YAMLException = require('./exception');
+
+var TYPE_CONSTRUCTOR_OPTIONS = [
+  'kind',
+  'multi',
+  'resolve',
+  'construct',
+  'instanceOf',
+  'predicate',
+  'represent',
+  'representName',
+  'defaultStyle',
+  'styleAliases'
+];
+
+var YAML_NODE_KINDS = [
+  'scalar',
+  'sequence',
+  'mapping'
+];
+
+function compileStyleAliases(map) {
+  var result = {};
+
+  if (map !== null) {
+    Object.keys(map).forEach(function (style) {
+      map[style].forEach(function (alias) {
+        result[String(alias)] = style;
+      });
+    });
+  }
+
+  return result;
 }
-const def = {
-    keyword: "type",
-    schemaType: "string",
-    error,
-    code(cxt) {
-        (0, metadata_1.checkMetadata)(cxt);
-        const { data, schema, parentSchema, it } = cxt;
-        let cond;
-        switch (schema) {
-            case "boolean":
-            case "string":
-                cond = (0, codegen_1._) `typeof ${data} == ${schema}`;
-                break;
-            case "timestamp": {
-                cond = timestampCode(cxt);
-                break;
-            }
-            case "float32":
-            case "float64":
-                cond = (0, codegen_1._) `typeof ${data} == "number"`;
-                break;
-            default: {
-                const sch = schema;
-                cond = (0, codegen_1._) `typeof ${data} == "number" && isFinite(${data}) && !(${data} % 1)`;
-                if (!it.opts.int32range && (sch === "int32" || sch === "uint32")) {
-                    if (sch === "uint32")
-                        cond = (0, codegen_1._) `${cond} && ${data} >= 0`;
-                }
-                else {
-                    const [min, max] = exports.intRange[sch];
-                    cond = (0, codegen_1._) `${cond} && ${data} >= ${min} && ${data} <= ${max}`;
-                }
-            }
-        }
-        cxt.pass(parentSchema.nullable ? (0, codegen_1.or)((0, codegen_1._) `${data} === null`, cond) : cond);
-    },
-};
-exports.default = def;
-//# sourceMappingURL=type.js.map
+
+function Type(tag, options) {
+  options = options || {};
+
+  Object.keys(options).forEach(function (name) {
+    if (TYPE_CONSTRUCTOR_OPTIONS.indexOf(name) === -1) {
+      throw new YAMLException('Unknown option "' + name + '" is met in definition of "' + tag + '" YAML type.');
+    }
+  });
+
+  // TODO: Add tag format check.
+  this.options       = options; // keep original options in case user wants to extend this type later
+  this.tag           = tag;
+  this.kind          = options['kind']          || null;
+  this.resolve       = options['resolve']       || function () { return true; };
+  this.construct     = options['construct']     || function (data) { return data; };
+  this.instanceOf    = options['instanceOf']    || null;
+  this.predicate     = options['predicate']     || null;
+  this.represent     = options['represent']     || null;
+  this.representName = options['representName'] || null;
+  this.defaultStyle  = options['defaultStyle']  || null;
+  this.multi         = options['multi']         || false;
+  this.styleAliases  = compileStyleAliases(options['styleAliases'] || null);
+
+  if (YAML_NODE_KINDS.indexOf(this.kind) === -1) {
+    throw new YAMLException('Unknown kind "' + this.kind + '" is specified for "' + tag + '" YAML type.');
+  }
+}
+
+module.exports = Type;
