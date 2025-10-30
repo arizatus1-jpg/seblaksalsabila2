@@ -1,57 +1,15 @@
-# Selector Specificity
+# @keyv/serialize [<img width="100" align="right" src="https://jaredwray.com/images/keyv-symbol.svg" alt="keyv">](https://github.com/jaredwra/keyv)
 
-[<img alt="npm version" src="https://img.shields.io/npm/v/@csstools/selector-specificity.svg" height="20">][npm-url]
-[<img alt="Build Status" src="https://github.com/csstools/postcss-plugins/workflows/test/badge.svg" height="20">][cli-url]
-[<img alt="Discord" src="https://shields.io/badge/Discord-5865F2?logo=discord&logoColor=white">][discord]
+> Serialization functionality for [Keyv](https://github.com/jaredwray/keyv)
 
-## Usage
 
-Add [Selector Specificity] to your project:
+[![build](https://github.com/jaredwray/keyv/actions/workflows/tests.yaml/badge.svg)](https://github.com/jaredwray/keyv/actions/workflows/tests.yaml)
+[![codecov](https://codecov.io/gh/jaredwray/keyv/branch/main/graph/badge.svg?token=bRzR3RyOXZ)](https://codecov.io/gh/jaredwray/keyv)
+[![GitHub license](https://img.shields.io/github/license/jaredwray/keyv)](https://github.com/jaredwray/keyv/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/dm/@keyv/serialize)](https://npmjs.com/package/@keyv/serialize)
 
-```bash
-npm install @csstools/selector-specificity --save-dev
-```
+This is the serialization functionality for [Keyv](https://github.com/jaredwray/keyv/tree/main/packages/keyv). It is used to serialize and deserialize data for storage and retrieval. You can also create your own [custom serialization functions](https://github.com/jaredwray/keyv/tree/main/packages/keyv#custom-serializers).
 
-```js
-import parser from 'postcss-selector-parser';
-import { selectorSpecificity } from '@csstools/selector-specificity';
+## License
 
-const selectorAST = parser().astSync('#foo:has(> .foo)');
-const specificity = selectorSpecificity(selectorAST);
-
-console.log(specificity.a); // 1
-console.log(specificity.b); // 1
-console.log(specificity.c); // 0
-```
-
-_`selectorSpecificity` takes a single selector, not a list of selectors (not : `a, b, c`).
-To compare or otherwise manipulate lists of selectors you need to call `selectorSpecificity` on each part._
-
-### Comparing
-
-The package exports a utility function to compare two specificities.
-
-```js
-import { selectorSpecificity, compare } from '@csstools/selector-specificity';
-
-const s1 = selectorSpecificity(ast1);
-const s2 = selectorSpecificity(ast2);
-compare(s1, s2); // -1 | 0 | 1
-```
-
-- if `s1 < s2` then `compare(s1, s2)` returns a negative number (`< 0`)
-- if `s1 > s2` then `compare(s1, s2)` returns a positive number (`> 0`)
-- if `s1 === s2` then `compare(s1, s2)` returns zero (`=== 0`)
-
-## Prior Art
-
-- [keeganstreet/specificity](https://github.com/keeganstreet/specificity)
-- [bramus/specificity](https://github.com/bramus/specificity)
-
-For CSSTools we always use `postcss-selector-parser` and want to calculate specificity from this AST.
-
-[cli-url]: https://github.com/csstools/postcss-plugins/actions/workflows/test.yml?query=workflow/test
-[discord]: https://discord.gg/bUadyRwkJS
-[npm-url]: https://www.npmjs.com/package/@csstools/selector-specificity
-
-[Selector Specificity]: https://github.com/csstools/postcss-plugins/tree/main/packages/selector-specificity
+[MIT © Jared Wray](LISCENCE)
