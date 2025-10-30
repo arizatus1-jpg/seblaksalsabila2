@@ -1,242 +1,445 @@
-import { fontFamilyKeywords, prefixedSystemFonts } from '../../reference/keywords.mjs';
-import findFontFamily from '../../utils/findFontFamily.mjs';
-import isStandardSyntaxValue from '../../utils/isStandardSyntaxValue.mjs';
-import isVariable from '../../utils/isVariable.mjs';
-import report from '../../utils/report.mjs';
-import ruleMessages from '../../utils/ruleMessages.mjs';
-import validateOptions from '../../utils/validateOptions.mjs';
-
-const ruleName = 'font-family-name-quotes';
-
-const messages = ruleMessages(ruleName, {
-	expected: (family) => `Expected quotes around "${family}"`,
-	rejected: (family) => `Unexpected quotes around "${family}"`,
-});
-
-const meta = {
-	url: 'https://stylelint.io/user-guide/rules/font-family-name-quotes',
-	fixable: true,
+/** @type {import('stylelint').PublicApi['rules']} */
+const rules = {
+	get 'alpha-value-notation'() {
+		return import('./alpha-value-notation/index.mjs').then((m) => m.default);
+	},
+	get 'annotation-no-unknown'() {
+		return import('./annotation-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-allowed-list'() {
+		return import('./at-rule-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-descriptor-no-unknown'() {
+		return import('./at-rule-descriptor-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-descriptor-value-no-unknown'() {
+		return import('./at-rule-descriptor-value-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-disallowed-list'() {
+		return import('./at-rule-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-empty-line-before'() {
+		return import('./at-rule-empty-line-before/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-no-deprecated'() {
+		return import('./at-rule-no-deprecated/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-no-unknown'() {
+		return import('./at-rule-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-no-vendor-prefix'() {
+		return import('./at-rule-no-vendor-prefix/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-prelude-no-invalid'() {
+		return import('./at-rule-prelude-no-invalid/index.mjs').then((m) => m.default);
+	},
+	get 'at-rule-property-required-list'() {
+		return import('./at-rule-property-required-list/index.mjs').then((m) => m.default);
+	},
+	get 'block-no-empty'() {
+		return import('./block-no-empty/index.mjs').then((m) => m.default);
+	},
+	get 'block-no-redundant-nested-style-rules'() {
+		return import('./block-no-redundant-nested-style-rules/index.mjs').then((m) => m.default);
+	},
+	get 'color-function-alias-notation'() {
+		return import('./color-function-alias-notation/index.mjs').then((m) => m.default);
+	},
+	get 'color-function-notation'() {
+		return import('./color-function-notation/index.mjs').then((m) => m.default);
+	},
+	get 'color-hex-alpha'() {
+		return import('./color-hex-alpha/index.mjs').then((m) => m.default);
+	},
+	get 'color-hex-length'() {
+		return import('./color-hex-length/index.mjs').then((m) => m.default);
+	},
+	get 'color-named'() {
+		return import('./color-named/index.mjs').then((m) => m.default);
+	},
+	get 'color-no-hex'() {
+		return import('./color-no-hex/index.mjs').then((m) => m.default);
+	},
+	get 'color-no-invalid-hex'() {
+		return import('./color-no-invalid-hex/index.mjs').then((m) => m.default);
+	},
+	get 'comment-empty-line-before'() {
+		return import('./comment-empty-line-before/index.mjs').then((m) => m.default);
+	},
+	get 'comment-no-empty'() {
+		return import('./comment-no-empty/index.mjs').then((m) => m.default);
+	},
+	get 'comment-pattern'() {
+		return import('./comment-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'comment-whitespace-inside'() {
+		return import('./comment-whitespace-inside/index.mjs').then((m) => m.default);
+	},
+	get 'comment-word-disallowed-list'() {
+		return import('./comment-word-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'container-name-pattern'() {
+		return import('./container-name-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'custom-media-pattern'() {
+		return import('./custom-media-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'custom-property-empty-line-before'() {
+		return import('./custom-property-empty-line-before/index.mjs').then((m) => m.default);
+	},
+	get 'custom-property-no-missing-var-function'() {
+		return import('./custom-property-no-missing-var-function/index.mjs').then((m) => m.default);
+	},
+	get 'custom-property-pattern'() {
+		return import('./custom-property-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-block-no-duplicate-custom-properties'() {
+		return import('./declaration-block-no-duplicate-custom-properties/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'declaration-block-no-duplicate-properties'() {
+		return import('./declaration-block-no-duplicate-properties/index.mjs').then((m) => m.default);
+	},
+	get 'rule-nesting-at-rule-required-list'() {
+		return import('./rule-nesting-at-rule-required-list/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-block-no-redundant-longhand-properties'() {
+		return import('./declaration-block-no-redundant-longhand-properties/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'declaration-block-no-shorthand-property-overrides'() {
+		return import('./declaration-block-no-shorthand-property-overrides/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'declaration-block-single-line-max-declarations'() {
+		return import('./declaration-block-single-line-max-declarations/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'declaration-empty-line-before'() {
+		return import('./declaration-empty-line-before/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-no-important'() {
+		return import('./declaration-no-important/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-max-values'() {
+		return import('./declaration-property-max-values/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-unit-allowed-list'() {
+		return import('./declaration-property-unit-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-unit-disallowed-list'() {
+		return import('./declaration-property-unit-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-value-allowed-list'() {
+		return import('./declaration-property-value-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-value-disallowed-list'() {
+		return import('./declaration-property-value-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'declaration-property-value-keyword-no-deprecated'() {
+		return import('./declaration-property-value-keyword-no-deprecated/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'declaration-property-value-no-unknown'() {
+		return import('./declaration-property-value-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'font-family-name-quotes'() {
+		return import('./font-family-name-quotes/index.mjs').then((m) => m.default);
+	},
+	get 'font-family-no-duplicate-names'() {
+		return import('./font-family-no-duplicate-names/index.mjs').then((m) => m.default);
+	},
+	get 'font-family-no-missing-generic-family-keyword'() {
+		return import('./font-family-no-missing-generic-family-keyword/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'font-weight-notation'() {
+		return import('./font-weight-notation/index.mjs').then((m) => m.default);
+	},
+	get 'function-allowed-list'() {
+		return import('./function-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'function-calc-no-unspaced-operator'() {
+		return import('./function-calc-no-unspaced-operator/index.mjs').then((m) => m.default);
+	},
+	get 'function-disallowed-list'() {
+		return import('./function-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'function-linear-gradient-no-nonstandard-direction'() {
+		return import('./function-linear-gradient-no-nonstandard-direction/index.mjs').then(
+			(m) => m.default,
+		);
+	},
+	get 'function-name-case'() {
+		return import('./function-name-case/index.mjs').then((m) => m.default);
+	},
+	get 'function-no-unknown'() {
+		return import('./function-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'function-url-no-scheme-relative'() {
+		return import('./function-url-no-scheme-relative/index.mjs').then((m) => m.default);
+	},
+	get 'function-url-quotes'() {
+		return import('./function-url-quotes/index.mjs').then((m) => m.default);
+	},
+	get 'function-url-scheme-allowed-list'() {
+		return import('./function-url-scheme-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'function-url-scheme-disallowed-list'() {
+		return import('./function-url-scheme-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'hue-degree-notation'() {
+		return import('./hue-degree-notation/index.mjs').then((m) => m.default);
+	},
+	get 'import-notation'() {
+		return import('./import-notation/index.mjs').then((m) => m.default);
+	},
+	get 'keyframe-block-no-duplicate-selectors'() {
+		return import('./keyframe-block-no-duplicate-selectors/index.mjs').then((m) => m.default);
+	},
+	get 'keyframe-declaration-no-important'() {
+		return import('./keyframe-declaration-no-important/index.mjs').then((m) => m.default);
+	},
+	get 'keyframe-selector-notation'() {
+		return import('./keyframe-selector-notation/index.mjs').then((m) => m.default);
+	},
+	get 'keyframes-name-pattern'() {
+		return import('./keyframes-name-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'layer-name-pattern'() {
+		return import('./layer-name-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'length-zero-no-unit'() {
+		return import('./length-zero-no-unit/index.mjs').then((m) => m.default);
+	},
+	get 'lightness-notation'() {
+		return import('./lightness-notation/index.mjs').then((m) => m.default);
+	},
+	get 'max-nesting-depth'() {
+		return import('./max-nesting-depth/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-allowed-list'() {
+		return import('./media-feature-name-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-disallowed-list'() {
+		return import('./media-feature-name-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-no-unknown'() {
+		return import('./media-feature-name-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-no-vendor-prefix'() {
+		return import('./media-feature-name-no-vendor-prefix/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-unit-allowed-list'() {
+		return import('./media-feature-name-unit-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-value-allowed-list'() {
+		return import('./media-feature-name-value-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-name-value-no-unknown'() {
+		return import('./media-feature-name-value-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'media-feature-range-notation'() {
+		return import('./media-feature-range-notation/index.mjs').then((m) => m.default);
+	},
+	get 'media-query-no-invalid'() {
+		return import('./media-query-no-invalid/index.mjs').then((m) => m.default);
+	},
+	get 'media-type-no-deprecated'() {
+		return import('./media-type-no-deprecated/index.mjs').then((m) => m.default);
+	},
+	get 'named-grid-areas-no-invalid'() {
+		return import('./named-grid-areas-no-invalid/index.mjs').then((m) => m.default);
+	},
+	get 'nesting-selector-no-missing-scoping-root'() {
+		return import('./nesting-selector-no-missing-scoping-root/index.mjs').then((m) => m.default);
+	},
+	get 'no-descending-specificity'() {
+		return import('./no-descending-specificity/index.mjs').then((m) => m.default);
+	},
+	get 'no-duplicate-at-import-rules'() {
+		return import('./no-duplicate-at-import-rules/index.mjs').then((m) => m.default);
+	},
+	get 'no-duplicate-selectors'() {
+		return import('./no-duplicate-selectors/index.mjs').then((m) => m.default);
+	},
+	get 'no-empty-source'() {
+		return import('./no-empty-source/index.mjs').then((m) => m.default);
+	},
+	get 'no-invalid-double-slash-comments'() {
+		return import('./no-invalid-double-slash-comments/index.mjs').then((m) => m.default);
+	},
+	get 'no-invalid-position-at-import-rule'() {
+		return import('./no-invalid-position-at-import-rule/index.mjs').then((m) => m.default);
+	},
+	get 'no-invalid-position-declaration'() {
+		return import('./no-invalid-position-declaration/index.mjs').then((m) => m.default);
+	},
+	get 'no-irregular-whitespace'() {
+		return import('./no-irregular-whitespace/index.mjs').then((m) => m.default);
+	},
+	get 'no-unknown-animations'() {
+		return import('./no-unknown-animations/index.mjs').then((m) => m.default);
+	},
+	get 'no-unknown-custom-media'() {
+		return import('./no-unknown-custom-media/index.mjs').then((m) => m.default);
+	},
+	get 'no-unknown-custom-properties'() {
+		return import('./no-unknown-custom-properties/index.mjs').then((m) => m.default);
+	},
+	get 'number-max-precision'() {
+		return import('./number-max-precision/index.mjs').then((m) => m.default);
+	},
+	get 'property-allowed-list'() {
+		return import('./property-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'property-disallowed-list'() {
+		return import('./property-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'property-no-deprecated'() {
+		return import('./property-no-deprecated/index.mjs').then((m) => m.default);
+	},
+	get 'property-no-unknown'() {
+		return import('./property-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'property-no-vendor-prefix'() {
+		return import('./property-no-vendor-prefix/index.mjs').then((m) => m.default);
+	},
+	get 'rule-empty-line-before'() {
+		return import('./rule-empty-line-before/index.mjs').then((m) => m.default);
+	},
+	get 'rule-selector-property-disallowed-list'() {
+		return import('./rule-selector-property-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-anb-no-unmatchable'() {
+		return import('./selector-anb-no-unmatchable/index.mjs').then((m) => m.default);
+	},
+	get 'selector-attribute-name-disallowed-list'() {
+		return import('./selector-attribute-name-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-attribute-operator-allowed-list'() {
+		return import('./selector-attribute-operator-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-attribute-operator-disallowed-list'() {
+		return import('./selector-attribute-operator-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-attribute-quotes'() {
+		return import('./selector-attribute-quotes/index.mjs').then((m) => m.default);
+	},
+	get 'selector-class-pattern'() {
+		return import('./selector-class-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'selector-combinator-allowed-list'() {
+		return import('./selector-combinator-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-combinator-disallowed-list'() {
+		return import('./selector-combinator-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-disallowed-list'() {
+		return import('./selector-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-id-pattern'() {
+		return import('./selector-id-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-attribute'() {
+		return import('./selector-max-attribute/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-class'() {
+		return import('./selector-max-class/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-combinators'() {
+		return import('./selector-max-combinators/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-compound-selectors'() {
+		return import('./selector-max-compound-selectors/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-id'() {
+		return import('./selector-max-id/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-pseudo-class'() {
+		return import('./selector-max-pseudo-class/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-specificity'() {
+		return import('./selector-max-specificity/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-type'() {
+		return import('./selector-max-type/index.mjs').then((m) => m.default);
+	},
+	get 'selector-max-universal'() {
+		return import('./selector-max-universal/index.mjs').then((m) => m.default);
+	},
+	get 'selector-nested-pattern'() {
+		return import('./selector-nested-pattern/index.mjs').then((m) => m.default);
+	},
+	get 'selector-no-qualifying-type'() {
+		return import('./selector-no-qualifying-type/index.mjs').then((m) => m.default);
+	},
+	get 'selector-no-vendor-prefix'() {
+		return import('./selector-no-vendor-prefix/index.mjs').then((m) => m.default);
+	},
+	get 'selector-not-notation'() {
+		return import('./selector-not-notation/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-class-allowed-list'() {
+		return import('./selector-pseudo-class-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-class-disallowed-list'() {
+		return import('./selector-pseudo-class-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-class-no-unknown'() {
+		return import('./selector-pseudo-class-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-element-allowed-list'() {
+		return import('./selector-pseudo-element-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-element-colon-notation'() {
+		return import('./selector-pseudo-element-colon-notation/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-element-disallowed-list'() {
+		return import('./selector-pseudo-element-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'selector-pseudo-element-no-unknown'() {
+		return import('./selector-pseudo-element-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'selector-type-case'() {
+		return import('./selector-type-case/index.mjs').then((m) => m.default);
+	},
+	get 'selector-type-no-unknown'() {
+		return import('./selector-type-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'shorthand-property-no-redundant-values'() {
+		return import('./shorthand-property-no-redundant-values/index.mjs').then((m) => m.default);
+	},
+	get 'string-no-newline'() {
+		return import('./string-no-newline/index.mjs').then((m) => m.default);
+	},
+	get 'syntax-string-no-invalid'() {
+		return import('./syntax-string-no-invalid/index.mjs').then((m) => m.default);
+	},
+	get 'time-min-milliseconds'() {
+		return import('./time-min-milliseconds/index.mjs').then((m) => m.default);
+	},
+	get 'unit-allowed-list'() {
+		return import('./unit-allowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'unit-disallowed-list'() {
+		return import('./unit-disallowed-list/index.mjs').then((m) => m.default);
+	},
+	get 'unit-no-unknown'() {
+		return import('./unit-no-unknown/index.mjs').then((m) => m.default);
+	},
+	get 'value-keyword-case'() {
+		return import('./value-keyword-case/index.mjs').then((m) => m.default);
+	},
+	get 'value-no-vendor-prefix'() {
+		return import('./value-no-vendor-prefix/index.mjs').then((m) => m.default);
+	},
 };
 
-/**
- * @param {string} font
- * @returns {boolean}
- */
-function isSystemFontKeyword(font) {
-	if (prefixedSystemFonts.has(font)) {
-		return true;
-	}
-
-	if (font === 'BlinkMacSystemFont') {
-		return true;
-	}
-
-	return false;
-}
-
-/**
- * "To avoid mistakes in escaping, it is recommended to quote font family names
- * that contain white space, digits, or punctuation characters other than hyphens"
- * (https://www.w3.org/TR/CSS2/fonts.html#font-family-prop)
- *
- * @param {string} family
- * @returns {boolean}
- */
-function quotesRecommended(family) {
-	return !/^[-a-z]+$/i.test(family);
-}
-
-/**
- * Quotes are required if the family is not a valid CSS identifier
- * (regexes from https://mathiasbynens.be/notes/unquoted-font-family)
- *
- * @param {string} family
- * @returns {boolean}
- */
-function quotesRequired(family) {
-	return family
-		.split(/\s+/)
-		.some((word) => /^(?:-?\d|--)/.test(word) || !/^[-\w\u{00A0}-\u{10FFFF}]+$/u.test(word));
-}
-
-/**
- * @typedef {{
- *   name: string,
- *   rawName: string,
- *   hasQuotes: boolean,
- *   sourceIndex: number,
- *   resetIndexes: (offset: number) => void,
- *   removeQuotes: () => void,
- *   addQuotes: () => void,
- * }} MutableNode
- */
-
-/**
- * @param {import('postcss-value-parser').Node[]} fontFamilies
- * @param {import('postcss').Declaration} decl
- * @returns {MutableNode[]}
- */
-const makeMutableFontFamilies = (fontFamilies, decl) => {
-	/**
-	 * @type {MutableNode[]}
-	 */
-	const mutableNodes = [];
-
-	fontFamilies.forEach((fontFamily, idx) => {
-		const quote = 'quote' in fontFamily && fontFamily.quote;
-		const name = fontFamily.value;
-
-		/** @type {MutableNode} */
-		const newNode = {
-			name,
-			rawName: quote ? `${quote}${name}${quote}` : name,
-			sourceIndex: fontFamily.sourceIndex,
-			hasQuotes: Boolean(quote),
-			resetIndexes(offset) {
-				mutableNodes.slice(idx + 1).forEach((n) => (n.sourceIndex += offset));
-			},
-			removeQuotes() {
-				if (this.hasQuotes === false) return;
-
-				const openIndex = this.sourceIndex;
-				const closeIndex = openIndex + this.name.length + 2;
-
-				this.hasQuotes = false;
-				decl.value = decl.value.slice(0, openIndex) + this.name + decl.value.substring(closeIndex);
-				this.resetIndexes(-2);
-			},
-			addQuotes() {
-				if (this.hasQuotes === true) return;
-
-				const openIndex = this.sourceIndex;
-				const closeIndex = openIndex + this.name.length;
-
-				this.hasQuotes = true;
-				const fixedName = `"${this.name}"`;
-
-				decl.value = decl.value.slice(0, openIndex) + fixedName + decl.value.substring(closeIndex);
-				this.resetIndexes(2);
-			},
-		};
-
-		mutableNodes.push(newNode);
-	});
-
-	return mutableNodes;
-};
-
-/** @type {import('stylelint').CoreRules[ruleName]} */
-const rule = (primary) => {
-	return (root, result) => {
-		const validOptions = validateOptions(result, ruleName, {
-			actual: primary,
-			possible: ['always-where-required', 'always-where-recommended', 'always-unless-keyword'],
-		});
-
-		if (!validOptions) {
-			return;
-		}
-
-		root.walkDecls(/^font(-family)?$/i, (decl) => {
-			if (!isStandardSyntaxValue(decl.value)) {
-				return;
-			}
-
-			let fontFamilyNodes = makeMutableFontFamilies(findFontFamily(decl.value), decl);
-
-			if (fontFamilyNodes.length === 0) {
-				return;
-			}
-
-			for (const fontFamilyNode of fontFamilyNodes) {
-				checkFamilyName(fontFamilyNode, decl);
-			}
-		});
-
-		/**
-		 * @param {MutableNode} fontFamilyNode
-		 * @param {import('postcss').Declaration} decl
-		 */
-		function checkFamilyName(fontFamilyNode, decl) {
-			const { name: family, rawName: rawFamily, hasQuotes } = fontFamilyNode;
-
-			if (isVariable(rawFamily)) {
-				return;
-			}
-
-			// Disallow quotes around (case-insensitive) keywords
-			// and system font keywords in all cases
-			if (fontFamilyKeywords.has(family.toLowerCase()) || isSystemFontKeyword(family)) {
-				if (hasQuotes) {
-					return complain('rejected', fontFamilyNode, decl);
-				}
-
-				return;
-			}
-
-			const required = quotesRequired(family);
-			const recommended = quotesRecommended(family);
-
-			switch (primary) {
-				case 'always-unless-keyword':
-					if (!hasQuotes) {
-						return complain('expected', fontFamilyNode, decl);
-					}
-
-					return;
-
-				case 'always-where-recommended':
-					if (!recommended && hasQuotes) {
-						return complain('rejected', fontFamilyNode, decl);
-					}
-
-					if (recommended && !hasQuotes) {
-						return complain('expected', fontFamilyNode, decl);
-					}
-
-					return;
-
-				case 'always-where-required':
-					if (!required && hasQuotes) {
-						return complain('rejected', fontFamilyNode, decl);
-					}
-
-					if (required && !hasQuotes) {
-						return complain('expected', fontFamilyNode, decl);
-					}
-			}
-		}
-
-		/**
-		 * @param {keyof messages} messageType
-		 * @param {MutableNode} fontFamilyNode
-		 * @param {import('postcss').Declaration} decl
-		 */
-		function complain(messageType, fontFamilyNode, decl) {
-			const { name, rawName } = fontFamilyNode;
-			const fix = () => {
-				return messageType === 'expected'
-					? fontFamilyNode.addQuotes()
-					: fontFamilyNode.removeQuotes();
-			};
-
-			report({
-				result,
-				ruleName,
-				message: messages[messageType],
-				messageArgs: [name],
-				node: decl,
-				word: rawName,
-				fix: {
-					apply: fix,
-					node: decl,
-				},
-			});
-		}
-	};
-};
-
-rule.ruleName = ruleName;
-rule.messages = messages;
-rule.meta = meta;
-export default rule;
+export default rules;
