@@ -1,30 +1,17 @@
 /**
-Import a module while bypassing the cache.
+Check if the character represented by a given [Unicode code point](https://en.wikipedia.org/wiki/Code_point) is [fullwidth](https://en.wikipedia.org/wiki/Halfwidth_and_fullwidth_forms).
+
+@param codePoint - The [code point](https://en.wikipedia.org/wiki/Code_point) of a character.
 
 @example
 ```
-// foo.js
-let i = 0;
-module.exports = () => ++i;
+import isFullwidthCodePoint from 'is-fullwidth-code-point';
 
-// index.js
-import importFresh = require('import-fresh');
+isFullwidthCodePoint('谢'.codePointAt(0));
+//=> true
 
-require('./foo')();
-//=> 1
-
-require('./foo')();
-//=> 2
-
-importFresh('./foo')();
-//=> 1
-
-importFresh('./foo')();
-//=> 1
-
-const foo = importFresh<typeof import('./foo')>('./foo');
+isFullwidthCodePoint('a'.codePointAt(0));
+//=> false
 ```
 */
-declare function importFresh<T>(moduleId: string): T;
-
-export = importFresh;
+export default function isFullwidthCodePoint(codePoint: number): boolean;

@@ -1,54 +1,39 @@
-# import-fresh
+# is-fullwidth-code-point [![Build Status](https://travis-ci.org/sindresorhus/is-fullwidth-code-point.svg?branch=master)](https://travis-ci.org/sindresorhus/is-fullwidth-code-point)
 
-> Import a module while bypassing the [cache](https://nodejs.org/api/modules.html#modules_caching)
+> Check if the character represented by a given [Unicode code point](https://en.wikipedia.org/wiki/Code_point) is [fullwidth](https://en.wikipedia.org/wiki/Halfwidth_and_fullwidth_forms)
 
-Useful for testing purposes when you need to freshly import a module.
-
-## ESM
-
-For ESM, you can use this snippet:
-
-```js
-const importFresh = moduleName => import(`${moduleName}?${Date.now()}`);
-
-const {default: foo} = await importFresh('foo');
-```
-
-**This snippet causes a memory leak, so only use it for short-lived tests.**
 
 ## Install
 
-```sh
-npm install import-fresh
 ```
+$ npm install is-fullwidth-code-point
+```
+
 
 ## Usage
 
 ```js
-// foo.js
-let i = 0;
-module.exports = () => ++i;
+const isFullwidthCodePoint = require('is-fullwidth-code-point');
+
+isFullwidthCodePoint('谢'.codePointAt(0));
+//=> true
+
+isFullwidthCodePoint('a'.codePointAt(0));
+//=> false
 ```
 
-```js
-const importFresh = require('import-fresh');
 
-require('./foo')();
-//=> 1
+## API
 
-require('./foo')();
-//=> 2
+### isFullwidthCodePoint(codePoint)
 
-importFresh('./foo')();
-//=> 1
+#### codePoint
 
-importFresh('./foo')();
-//=> 1
-```
+Type: `number`
 
-## Related
+The [code point](https://en.wikipedia.org/wiki/Code_point) of a character.
 
-- [clear-module](https://github.com/sindresorhus/clear-module) - Clear a module from the import cache
-- [import-from](https://github.com/sindresorhus/import-from) - Import a module from a given path
-- [import-cwd](https://github.com/sindresorhus/import-cwd) - Import a module from the current working directory
-- [import-lazy](https://github.com/sindresorhus/import-lazy) - Import modules lazily
+
+## License
+
+MIT © [Sindre Sorhus](https://sindresorhus.com)
