@@ -1,6 +1,4 @@
-export default location;
-/**
- * Path to CSS functions list JSON file.
- */
-declare const location: string;
-//# sourceMappingURL=index.d.ts.map
+declare module 'fast-deep-equal' {
+    const equal: (a: any, b: any) => boolean;
+    export = equal;
+}
