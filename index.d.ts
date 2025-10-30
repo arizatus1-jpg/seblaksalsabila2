@@ -1,51 +1,31 @@
-export type PathTypeFunction = (path: string) => Promise<boolean>;
+declare const resolveFrom: {
+	/**
+	Resolve the path of a module like [`require.resolve()`](https://nodejs.org/api/globals.html#globals_require_resolve) but from a given path.
 
-/**
- * Check whether the passed `path` is a file.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a file.
- */
-export const isFile: PathTypeFunction;
+	@param fromDirectory - Directory to resolve from.
+	@param moduleId - What you would use in `require()`.
+	@returns Resolved module path. Throws when the module can't be found.
 
-/**
- * Check whether the passed `path` is a directory.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a directory.
- */
-export const isDirectory: PathTypeFunction;
+	@example
+	```
+	import resolveFrom = require('resolve-from');
 
-/**
- * Check whether the passed `path` is a symlink.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a symlink.
- */
-export const isSymlink: PathTypeFunction;
+	// There is a file at `./foo/bar.js`
 
-export type PathTypeSyncFunction = (path: string) => boolean;
+	resolveFrom('foo', './bar');
+	//=> '/Users/sindresorhus/dev/test/foo/bar.js'
+	```
+	*/
+	(fromDirectory: string, moduleId: string): string;
 
-/**
- * Synchronously check whether the passed `path` is a file.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a file.
- */
-export const isFileSync: PathTypeSyncFunction;
+	/**
+	Resolve the path of a module like [`require.resolve()`](https://nodejs.org/api/globals.html#globals_require_resolve) but from a given path.
 
-/**
- * Synchronously check whether the passed `path` is a directory.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a directory.
- */
-export const isDirectorySync: PathTypeSyncFunction;
+	@param fromDirectory - Directory to resolve from.
+	@param moduleId - What you would use in `require()`.
+	@returns Resolved module path or `undefined` when the module can't be found.
+	*/
+	silent(fromDirectory: string, moduleId: string): string | undefined;
+};
 
-/**
- * Synchronously check whether the passed `path` is a symlink.
- *
- * @param path - The path to check.
- * @returns Whether the `path` is a directory.
- */
-export const isSymlinkSync: PathTypeSyncFunction;
+export = resolveFrom;

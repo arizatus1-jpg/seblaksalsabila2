@@ -1,85 +1,242 @@
-let crypto = require('crypto')
-
-let { urlAlphabet } = require('./url-alphabet/index.cjs')
-
-// It is best to make fewer, larger requests to the crypto module to
-// avoid system call overhead. So, random numbers are generated in a
-// pool. The pool is a Buffer that is larger than the initial random
-// request size by this multiplier. The pool is enlarged if subsequent
-// requests exceed the maximum buffer size.
-const POOL_SIZE_MULTIPLIER = 128
-let pool, poolOffset
-
-let fillPool = bytes => {
-  if (!pool || pool.length < bytes) {
-    pool = Buffer.allocUnsafe(bytes * POOL_SIZE_MULTIPLIER)
-    crypto.randomFillSync(pool)
-    poolOffset = 0
-  } else if (poolOffset + bytes > pool.length) {
-    crypto.randomFillSync(pool)
-    poolOffset = 0
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
-  poolOffset += bytes
-}
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-let random = bytes => {
-  // `|=` convert `bytes` to number to prevent `valueOf` abusing and pool pollution
-  fillPool((bytes |= 0))
-  return pool.subarray(poolOffset - bytes, poolOffset)
-}
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  MemoryMessageProvider: () => MemoryMessageProvider,
+  Qified: () => Qified,
+  QifiedEvents: () => QifiedEvents
+});
+module.exports = __toCommonJS(index_exports);
+var import_hookified = require("hookified");
 
-let customRandom = (alphabet, defaultSize, getRandom) => {
-  // First, a bitmask is necessary to generate the ID. The bitmask makes bytes
-  // values closer to the alphabet size. The bitmask calculates the closest
-  // `2^31 - 1` number, which exceeds the alphabet size.
-  // For example, the bitmask for the alphabet size 30 is 31 (00011111).
-  let mask = (2 << (31 - Math.clz32((alphabet.length - 1) | 1))) - 1
-  // Though, the bitmask solution is not perfect since the bytes exceeding
-  // the alphabet size are refused. Therefore, to reliably generate the ID,
-  // the random bytes redundancy has to be satisfied.
+// src/memory/message.ts
+var defaultMemoryId = "@qified/memory";
+var MemoryMessageProvider = class {
+  _subscriptions;
+  _id;
+  /**
+   * Creates an instance of MemoryMessageProvider.
+   * @param {MemoryMessageProviderOptions} options - Optional configuration for the provider.
+   */
+  constructor(options) {
+    this._subscriptions = /* @__PURE__ */ new Map();
+    this._id = options?.id ?? defaultMemoryId;
+  }
+  /**
+   * Gets the provider ID for the memory message provider.
+   * @returns {string} The provider ID.
+   */
+  get id() {
+    return this._id;
+  }
+  /**
+   * Sets the provider ID for the memory message provider.
+   * @param {string} id The new provider ID.
+   */
+  set id(id) {
+    this._id = id;
+  }
+  /**
+   * Gets the subscriptions map for all topics.
+   * @returns {Map<string, TopicHandler[]>} The subscriptions map.
+   */
+  get subscriptions() {
+    return this._subscriptions;
+  }
+  /**
+   * Sets the subscriptions map.
+   * @param {Map<string, TopicHandler[]>} value The new subscriptions map.
+   */
+  set subscriptions(value) {
+    this._subscriptions = value;
+  }
+  /**
+   * Publishes a message to a specified topic.
+   * All handlers subscribed to the topic will be called synchronously in order.
+   * @param {string} topic The topic to publish the message to.
+   * @param {Message} message The message to publish.
+   * @returns {Promise<void>} A promise that resolves when all handlers have been called.
+   */
+  async publish(topic, message) {
+    const messageWithProvider = {
+      ...message,
+      providerId: this._id
+    };
+    const subscriptions = this._subscriptions.get(topic) ?? [];
+    for (const subscription of subscriptions) {
+      await subscription.handler(messageWithProvider);
+    }
+  }
+  /**
+   * Subscribes to a specified topic.
+   * @param {string} topic The topic to subscribe to.
+   * @param {TopicHandler} handler The handler to process incoming messages.
+   * @returns {Promise<void>} A promise that resolves when the subscription is complete.
+   */
+  async subscribe(topic, handler) {
+    if (!this._subscriptions.has(topic)) {
+      this._subscriptions.set(topic, []);
+    }
+    this._subscriptions.get(topic)?.push(handler);
+  }
+  /**
+   * Unsubscribes from a specified topic.
+   * If an ID is provided, only the handler with that ID is removed.
+   * If no ID is provided, all handlers for the topic are removed.
+   * @param {string} topic The topic to unsubscribe from.
+   * @param {string} [id] Optional identifier for the subscription to remove.
+   * @returns {Promise<void>} A promise that resolves when the unsubscription is complete.
+   */
+  async unsubscribe(topic, id) {
+    if (id) {
+      const subscriptions = this._subscriptions.get(topic);
+      if (subscriptions) {
+        this._subscriptions.set(
+          topic,
+          subscriptions.filter((sub) => sub.id !== id)
+        );
+      }
+    } else {
+      this._subscriptions.delete(topic);
+    }
+  }
+  /**
+   * Disconnects and clears all subscriptions.
+   * @returns {Promise<void>} A promise that resolves when the disconnection is complete.
+   */
+  async disconnect() {
+    this._subscriptions.clear();
+  }
+};
 
-  // Note: every hardware random generator call is performance expensive,
-  // because the system call for entropy collection takes a lot of time.
-  // So, to avoid additional system calls, extra bytes are requested in advance.
-
-  // Next, a step determines how many random bytes to generate.
-  // The number of random bytes gets decided upon the ID size, mask,
-  // alphabet size, and magic number 1.6 (using 1.6 peaks at performance
-  // according to benchmarks).
-  let step = Math.ceil((1.6 * mask * defaultSize) / alphabet.length)
-
-  return (size = defaultSize) => {
-    let id = ''
-    while (true) {
-      let bytes = getRandom(step)
-      // A compact alternative for `for (let i = 0; i < step; i++)`.
-      let i = step
-      while (i--) {
-        // Adding `|| ''` refuses a random byte that exceeds the alphabet size.
-        id += alphabet[bytes[i] & mask] || ''
-        if (id.length === size) return id
+// src/index.ts
+var QifiedEvents = /* @__PURE__ */ ((QifiedEvents2) => {
+  QifiedEvents2["error"] = "error";
+  QifiedEvents2["info"] = "info";
+  QifiedEvents2["warn"] = "warn";
+  QifiedEvents2["publish"] = "publish";
+  QifiedEvents2["subscribe"] = "subscribe";
+  QifiedEvents2["unsubscribe"] = "unsubscribe";
+  QifiedEvents2["disconnect"] = "disconnect";
+  return QifiedEvents2;
+})(QifiedEvents || {});
+var Qified = class extends import_hookified.Hookified {
+  _messageProviders = [];
+  /**
+   * Creates an instance of Qified.
+   * @param {QifiedOptions} options - Optional configuration for Qified.
+   */
+  constructor(options) {
+    super(options);
+    if (options?.messageProviders) {
+      if (Array.isArray(options?.messageProviders)) {
+        this._messageProviders = options.messageProviders;
+      } else {
+        this._messageProviders = [options?.messageProviders];
       }
     }
   }
-}
-
-let customAlphabet = (alphabet, size = 21) =>
-  customRandom(alphabet, size, random)
-
-let nanoid = (size = 21) => {
-  // `|=` convert `size` to number to prevent `valueOf` abusing and pool pollution
-  fillPool((size |= 0))
-  let id = ''
-  // We are reading directly from the random pool to avoid creating new array
-  for (let i = poolOffset - size; i < poolOffset; i++) {
-    // It is incorrect to use bytes exceeding the alphabet size.
-    // The following mask reduces the random byte in the 0-255 value
-    // range to the 0-63 value range. Therefore, adding hacks, such
-    // as empty string fallback or magic numbers, is unneccessary because
-    // the bitmask trims bytes down to the alphabet size.
-    id += urlAlphabet[pool[i] & 63]
+  /**
+   * Gets or sets the message providers.
+   * @returns {MessageProvider[]} The array of message providers.
+   */
+  get messageProviders() {
+    return this._messageProviders;
   }
-  return id
-}
-
-module.exports = { nanoid, customAlphabet, customRandom, urlAlphabet, random }
+  /**
+   * Sets the message providers.
+   * @param {MessageProvider[]} providers - The array of message providers to set.
+   */
+  set messageProviders(providers) {
+    this._messageProviders = providers;
+  }
+  /**
+   * Subscribes to a topic. If you have multiple message providers, it will subscribe to the topic on all of them.
+   * @param {string} topic - The topic to subscribe to.
+   * @param {TopicHandler} handler - The handler to call when a message is published to the topic.
+   */
+  async subscribe(topic, handler) {
+    try {
+      const promises = this._messageProviders.map(
+        async (provider) => provider.subscribe(topic, handler)
+      );
+      await Promise.all(promises);
+      this.emit("subscribe" /* subscribe */, { topic, handler });
+    } catch (error) {
+      this.emit("error" /* error */, error);
+    }
+  }
+  /**
+   * Publishes a message to a topic. If you have multiple message providers, it will publish the message to all of them.
+   * @param {string} topic - The topic to publish to.
+   * @param {Message} message - The message to publish.
+   */
+  async publish(topic, message) {
+    try {
+      const promises = this._messageProviders.map(
+        async (provider) => provider.publish(topic, message)
+      );
+      await Promise.all(promises);
+      this.emit("publish" /* publish */, { topic, message });
+    } catch (error) {
+      this.emit("error" /* error */, error);
+    }
+  }
+  /**
+   * Unsubscribes from a topic. If you have multiple message providers, it will unsubscribe from the topic on all of them.
+   * If an ID is provided, it will unsubscribe only that handler. If no ID is provided, it will unsubscribe all handlers for the topic.
+   * @param topic - The topic to unsubscribe from.
+   * @param id - The optional ID of the handler to unsubscribe. If not provided, all handlers for the topic will be unsubscribed.
+   */
+  async unsubscribe(topic, id) {
+    try {
+      const promises = this._messageProviders.map(
+        async (provider) => provider.unsubscribe(topic, id)
+      );
+      await Promise.all(promises);
+      this.emit("unsubscribe" /* unsubscribe */, { topic, id });
+    } catch (error) {
+      this.emit("error" /* error */, error);
+    }
+  }
+  /**
+   * Disconnects from all providers.
+   * This method will call the `disconnect` method on each message provider.
+   */
+  async disconnect() {
+    try {
+      const promises = this._messageProviders.map(
+        async (provider) => provider.disconnect()
+      );
+      await Promise.all(promises);
+      this._messageProviders = [];
+      this.emit("disconnect" /* disconnect */);
+    } catch (error) {
+      this.emit("error" /* error */, error);
+    }
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  MemoryMessageProvider,
+  Qified,
+  QifiedEvents
+});

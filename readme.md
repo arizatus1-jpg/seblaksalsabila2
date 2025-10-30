@@ -1,70 +1,70 @@
-# path-type [![Build Status](https://travis-ci.org/sindresorhus/path-type.svg?branch=master)](https://travis-ci.org/sindresorhus/path-type)
+# resolve-from [![Build Status](https://travis-ci.org/sindresorhus/resolve-from.svg?branch=master)](https://travis-ci.org/sindresorhus/resolve-from)
 
-> Check if a path is a file, directory, or symlink
+> Resolve the path of a module like [`require.resolve()`](https://nodejs.org/api/globals.html#globals_require_resolve) but from a given path
 
 
 ## Install
 
 ```
-$ npm install path-type
+$ npm install resolve-from
 ```
 
 
 ## Usage
 
 ```js
-const {isFile} = require('path-type');
+const resolveFrom = require('resolve-from');
 
-(async () => {
-	console.log(await isFile('package.json'));
-	//=> true
-})();
+// There is a file at `./foo/bar.js`
+
+resolveFrom('foo', './bar');
+//=> '/Users/sindresorhus/dev/test/foo/bar.js'
 ```
 
 
 ## API
 
-### isFile(path)
+### resolveFrom(fromDirectory, moduleId)
 
-Check whether the passed `path` is a file.
+Like `require()`, throws when the module can't be found.
 
-Returns a `Promise<boolean>`.
+### resolveFrom.silent(fromDirectory, moduleId)
 
-#### path
+Returns `undefined` instead of throwing when the module can't be found.
+
+#### fromDirectory
 
 Type: `string`
 
-The path to check.
+Directory to resolve from.
 
-### isDirectory(path)
+#### moduleId
 
-Check whether the passed `path` is a directory.
+Type: `string`
 
-Returns a `Promise<boolean>`.
+What you would use in `require()`.
 
-### isSymlink(path)
 
-Check whether the passed `path` is a symlink.
+## Tip
 
-Returns a `Promise<boolean>`.
+Create a partial using a bound function if you want to resolve from the same `fromDirectory` multiple times:
 
-### isFileSync(path)
+```js
+const resolveFromFoo = resolveFrom.bind(null, 'foo');
 
-Synchronously check whether the passed `path` is a file.
+resolveFromFoo('./bar');
+resolveFromFoo('./baz');
+```
 
-Returns a `boolean`.
 
-### isDirectorySync(path)
+## Related
 
-Synchronously check whether the passed `path` is a directory.
-
-Returns a `boolean`.
-
-### isSymlinkSync(path)
-
-Synchronously check whether the passed `path` is a symlink.
-
-Returns a `boolean`.
+- [resolve-cwd](https://github.com/sindresorhus/resolve-cwd) - Resolve the path of a module from the current working directory
+- [import-from](https://github.com/sindresorhus/import-from) - Import a module from a given path
+- [import-cwd](https://github.com/sindresorhus/import-cwd) - Import a module from the current working directory
+- [resolve-pkg](https://github.com/sindresorhus/resolve-pkg) - Resolve the path of a package regardless of it having an entry point
+- [import-lazy](https://github.com/sindresorhus/import-lazy) - Import a module lazily
+- [resolve-global](https://github.com/sindresorhus/resolve-global) - Resolve the path of a globally installed module
 
 
 ## License
