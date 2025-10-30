@@ -1,96 +1,57 @@
-# fast-deep-equal
-The fastest deep equal with ES6 Map, Set and Typed arrays support.
+# fastest-levenshtein :rocket: 
+> Fastest JS/TS implemenation of [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance).<br>
+> Measure the difference between two strings.
 
-[![Build Status](https://travis-ci.org/epoberezkin/fast-deep-equal.svg?branch=master)](https://travis-ci.org/epoberezkin/fast-deep-equal)
-[![npm](https://img.shields.io/npm/v/fast-deep-equal.svg)](https://www.npmjs.com/package/fast-deep-equal)
-[![Coverage Status](https://coveralls.io/repos/github/epoberezkin/fast-deep-equal/badge.svg?branch=master)](https://coveralls.io/github/epoberezkin/fast-deep-equal?branch=master)
-
-
-## Install
-
+[![Build Status](https://travis-ci.org/ka-weihe/fastest-levenshtein.svg?branch=master)](https://travis-ci.org/ka-weihe/fastest-levenshtein)
+[![Coverage Status](https://coveralls.io/repos/github/ka-weihe/node-levenshtein/badge.svg?branch=master)](https://coveralls.io/github/ka-weihe/node-levenshtein?branch=master)
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/ka-weihe/fastest-levenshtein.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ka-weihe/fastest-levenshtein/context:javascript)
+![npm](https://img.shields.io/npm/dm/fastest-levenshtein)
 ```bash
-npm install fast-deep-equal
+$ npm i fastest-levenshtein
 ```
-
-
-## Features
-
-- ES5 compatible
-- works in node.js (8+) and browsers (IE9+)
-- checks equality of Date and RegExp objects by value.
-
-ES6 equal (`require('fast-deep-equal/es6')`) also supports:
-- Maps
-- Sets
-- Typed arrays
-
 
 ## Usage
-
+### Node
 ```javascript
-var equal = require('fast-deep-equal');
-console.log(equal({foo: 'bar'}, {foo: 'bar'})); // true
+const {distance, closest} = require('fastest-levenshtein')
+
+// Print levenshtein-distance between 'fast' and 'faster' 
+console.log(distance('fast', 'faster'))
+//=> 2
+
+// Print string from array with lowest edit-distance to 'fast'
+console.log(closest('fast', ['slow', 'faster', 'fastest']))
+//=> 'faster'
 ```
 
-To support ES6 Maps, Sets and Typed arrays equality use:
-
+### Deno
 ```javascript
-var equal = require('fast-deep-equal/es6');
-console.log(equal(Int16Array([1, 2]), Int16Array([1, 2]))); // true
+import {distance, closest} from 'https://deno.land/x/fastest_levenshtein/mod.ts'
+
+// Print levenshtein-distance between 'fast' and 'faster' 
+console.log(distance('fast', 'faster'))
+//=> 2
+
+// Print string from array with lowest edit-distance to 'fast'
+console.log(closest('fast', ['slow', 'faster', 'fastest']))
+//=> 'faster'
 ```
 
-To use with React (avoiding the traversal of React elements' _owner
-property that contains circular references and is not needed when
-comparing the elements - borrowed from [react-fast-compare](https://github.com/FormidableLabs/react-fast-compare)):
+## Benchmark
+I generated 500 pairs of strings with length N. I measured the ops/sec each library achieves to process all the given pairs. Higher is better. 
 
-```javascript
-var equal = require('fast-deep-equal/react');
-var equal = require('fast-deep-equal/es6/react');
-```
+| Test Target               | N=4   | N=8   | N=16  | N=32 | N=64  | N=128 | N=256 | N=512 | N=1024 |
+|---------------------------|-------|-------|-------|------|-------|-------|-------|-------|--------|
+| fastest-levenshtein       | 44423 | 23702 | 10764 | 4595 | 1049  | 291.5 | 86.64 | 22.24 | 5.473  |
+| js-levenshtein            | 21261 | 10030 | 2939  | 824  | 223   | 57.62 | 14.77 | 3.717 | 0.934  |
+| leven                     | 19688 | 6884  | 1606  | 436  | 117   | 30.34 | 7.604 | 1.929 | 0.478  |
+| fast-levenshtein          | 18577 | 6112  | 1265  | 345  | 89.41 | 22.70 | 5.676 | 1.428 | 0.348  |
+| levenshtein-edit-distance | 22968 | 7445  | 1493  | 409  | 109   | 28.07 | 7.095 | 1.789 | 0.445  |
 
+### Relative Performance
+This image shows the relative performance between `fastest-levenshtein` and `js-levenshtein` (the 2nd fastest). `fastest-levenshtein` is always a lot faster. y-axis shows "times faster".
 
-## Performance benchmark
-
-Node.js v12.6.0:
-
-```
-fast-deep-equal x 261,950 ops/sec ±0.52% (89 runs sampled)
-fast-deep-equal/es6 x 212,991 ops/sec ±0.34% (92 runs sampled)
-fast-equals x 230,957 ops/sec ±0.83% (85 runs sampled)
-nano-equal x 187,995 ops/sec ±0.53% (88 runs sampled)
-shallow-equal-fuzzy x 138,302 ops/sec ±0.49% (90 runs sampled)
-underscore.isEqual x 74,423 ops/sec ±0.38% (89 runs sampled)
-lodash.isEqual x 36,637 ops/sec ±0.72% (90 runs sampled)
-deep-equal x 2,310 ops/sec ±0.37% (90 runs sampled)
-deep-eql x 35,312 ops/sec ±0.67% (91 runs sampled)
-ramda.equals x 12,054 ops/sec ±0.40% (91 runs sampled)
-util.isDeepStrictEqual x 46,440 ops/sec ±0.43% (90 runs sampled)
-assert.deepStrictEqual x 456 ops/sec ±0.71% (88 runs sampled)
-
-The fastest is fast-deep-equal
-```
-
-To run benchmark (requires node.js 6+):
-
-```bash
-npm run benchmark
-```
-
-__Please note__: this benchmark runs against the available test cases. To choose the most performant library for your application, it is recommended to benchmark against your data and to NOT expect this benchmark to reflect the performance difference in your application.
-
-
-## Enterprise support
-
-fast-deep-equal package is a part of [Tidelift enterprise subscription](https://tidelift.com/subscription/pkg/npm-fast-deep-equal?utm_source=npm-fast-deep-equal&utm_medium=referral&utm_campaign=enterprise&utm_term=repo) - it provides a centralised commercial support to open-source software users, in addition to the support provided by software maintainers.
-
-
-## Security contact
-
-To report a security vulnerability, please use the
-[Tidelift security contact](https://tidelift.com/security).
-Tidelift will coordinate the fix and disclosure. Please do NOT report security vulnerability via GitHub issues.
-
+![Benchmark](/images/relaperf.png)
 
 ## License
-
-[MIT](https://github.com/epoberezkin/fast-deep-equal/blob/master/LICENSE)
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details

@@ -1,15 +1,12 @@
-import * as fsScandir from '@nodelib/fs.scandir';
-import type { Entry } from '../types';
+import * as fsStat from '@nodelib/fs.stat';
+import * as fsWalk from '@nodelib/fs.walk';
+import { Entry, Pattern, ReaderOptions } from '../types';
 import Reader from './reader';
-export default class SyncReader extends Reader {
-    protected readonly _scandir: typeof fsScandir.scandirSync;
-    private readonly _storage;
-    private readonly _queue;
-    read(): Entry[];
-    private _pushToQueue;
-    private _handleQueue;
-    private _handleDirectory;
-    private _handleError;
-    private _handleEntry;
-    private _pushToStorage;
+export default class ReaderSync extends Reader<Entry[]> {
+    protected _walkSync: typeof fsWalk.walkSync;
+    protected _statSync: typeof fsStat.statSync;
+    dynamic(root: string, options: ReaderOptions): Entry[];
+    static(patterns: Pattern[], options: ReaderOptions): Entry[];
+    private _getEntry;
+    private _getStat;
 }

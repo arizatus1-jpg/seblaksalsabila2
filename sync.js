@@ -1,59 +1,43 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const fsScandir = require("@nodelib/fs.scandir");
-const common = require("./common");
+const fsStat = require("@nodelib/fs.stat");
+const fsWalk = require("@nodelib/fs.walk");
 const reader_1 = require("./reader");
-class SyncReader extends reader_1.default {
+class ReaderSync extends reader_1.default {
     constructor() {
         super(...arguments);
-        this._scandir = fsScandir.scandirSync;
-        this._storage = [];
-        this._queue = new Set();
+        this._walkSync = fsWalk.walkSync;
+        this._statSync = fsStat.statSync;
     }
-    read() {
-        this._pushToQueue(this._root, this._settings.basePath);
-        this._handleQueue();
-        return this._storage;
+    dynamic(root, options) {
+        return this._walkSync(root, options);
     }
-    _pushToQueue(directory, base) {
-        this._queue.add({ directory, base });
-    }
-    _handleQueue() {
-        for (const item of this._queue.values()) {
-            this._handleDirectory(item.directory, item.base);
-        }
-    }
-    _handleDirectory(directory, base) {
-        try {
-            const entries = this._scandir(directory, this._settings.fsScandirSettings);
-            for (const entry of entries) {
-                this._handleEntry(entry, base);
+    static(patterns, options) {
+        const entries = [];
+        for (const pattern of patterns) {
+            const filepath = this._getFullEntryPath(pattern);
+            const entry = this._getEntry(filepath, pattern, options);
+            if (entry === null || !options.entryFilter(entry)) {
+                continue;
             }
+            entries.push(entry);
+        }
+        return entries;
+    }
+    _getEntry(filepath, pattern, options) {
+        try {
+            const stats = this._getStat(filepath);
+            return this._makeEntry(stats, pattern);
         }
         catch (error) {
-            this._handleError(error);
+            if (options.errorFilter(error)) {
+                return null;
+            }
+            throw error;
         }
     }
-    _handleError(error) {
-        if (!common.isFatalError(this._settings, error)) {
-            return;
-        }
-        throw error;
-    }
-    _handleEntry(entry, base) {
-        const fullpath = entry.path;
-        if (base !== undefined) {
-            entry.path = common.joinPathSegments(base, entry.name, this._settings.pathSegmentSeparator);
-        }
-        if (common.isAppliedFilter(this._settings.entryFilter, entry)) {
-            this._pushToStorage(entry);
-        }
-        if (entry.dirent.isDirectory() && common.isAppliedFilter(this._settings.deepFilter, entry)) {
-            this._pushToQueue(fullpath, base === undefined ? undefined : entry.path);
-        }
-    }
-    _pushToStorage(entry) {
-        this._storage.push(entry);
+    _getStat(filepath) {
+        return this._statSync(filepath, this._fsStatSettings);
     }
 }
-exports.default = SyncReader;
+exports.default = ReaderSync;

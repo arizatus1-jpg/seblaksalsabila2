@@ -1,18 +1,21 @@
-const peq = new Uint32Array(0x10000);
-const myers_32 = (a, b) => {
-    const n = a.length;
-    const m = b.length;
-    const lst = 1 << (n - 1);
-    let pv = -1;
-    let mv = 0;
-    let sc = n;
-    let i = n;
+"use strict";
+exports.__esModule = true;
+exports.distance = exports.closest = void 0;
+var peq = new Uint32Array(0x10000);
+var myers_32 = function (a, b) {
+    var n = a.length;
+    var m = b.length;
+    var lst = 1 << (n - 1);
+    var pv = -1;
+    var mv = 0;
+    var sc = n;
+    var i = n;
     while (i--) {
         peq[a.charCodeAt(i)] |= 1 << i;
     }
     for (i = 0; i < m; i++) {
-        let eq = peq[b.charCodeAt(i)];
-        const xv = eq | mv;
+        var eq = peq[b.charCodeAt(i)];
+        var xv = eq | mv;
         eq |= ((eq & pv) + pv) ^ pv;
         mv |= ~(eq | pv);
         pv &= eq;
@@ -32,34 +35,34 @@ const myers_32 = (a, b) => {
     }
     return sc;
 };
-const myers_x = (b, a) => {
-    const n = a.length;
-    const m = b.length;
-    const mhc = [];
-    const phc = [];
-    const hsize = Math.ceil(n / 32);
-    const vsize = Math.ceil(m / 32);
-    for (let i = 0; i < hsize; i++) {
+var myers_x = function (b, a) {
+    var n = a.length;
+    var m = b.length;
+    var mhc = [];
+    var phc = [];
+    var hsize = Math.ceil(n / 32);
+    var vsize = Math.ceil(m / 32);
+    for (var i = 0; i < hsize; i++) {
         phc[i] = -1;
         mhc[i] = 0;
     }
-    let j = 0;
+    var j = 0;
     for (; j < vsize - 1; j++) {
-        let mv = 0;
-        let pv = -1;
-        const start = j * 32;
-        const vlen = Math.min(32, m) + start;
-        for (let k = start; k < vlen; k++) {
+        var mv_1 = 0;
+        var pv_1 = -1;
+        var start_1 = j * 32;
+        var vlen_1 = Math.min(32, m) + start_1;
+        for (var k = start_1; k < vlen_1; k++) {
             peq[b.charCodeAt(k)] |= 1 << k;
         }
-        for (let i = 0; i < n; i++) {
-            const eq = peq[a.charCodeAt(i)];
-            const pb = (phc[(i / 32) | 0] >>> i) & 1;
-            const mb = (mhc[(i / 32) | 0] >>> i) & 1;
-            const xv = eq | mv;
-            const xh = ((((eq | mb) & pv) + pv) ^ pv) | eq | mb;
-            let ph = mv | ~(xh | pv);
-            let mh = pv & xh;
+        for (var i = 0; i < n; i++) {
+            var eq = peq[a.charCodeAt(i)];
+            var pb = (phc[(i / 32) | 0] >>> i) & 1;
+            var mb = (mhc[(i / 32) | 0] >>> i) & 1;
+            var xv = eq | mv_1;
+            var xh = ((((eq | mb) & pv_1) + pv_1) ^ pv_1) | eq | mb;
+            var ph = mv_1 | ~(xh | pv_1);
+            var mh = pv_1 & xh;
             if ((ph >>> 31) ^ pb) {
                 phc[(i / 32) | 0] ^= 1 << i;
             }
@@ -68,29 +71,29 @@ const myers_x = (b, a) => {
             }
             ph = (ph << 1) | pb;
             mh = (mh << 1) | mb;
-            pv = mh | ~(xv | ph);
-            mv = ph & xv;
+            pv_1 = mh | ~(xv | ph);
+            mv_1 = ph & xv;
         }
-        for (let k = start; k < vlen; k++) {
+        for (var k = start_1; k < vlen_1; k++) {
             peq[b.charCodeAt(k)] = 0;
         }
     }
-    let mv = 0;
-    let pv = -1;
-    const start = j * 32;
-    const vlen = Math.min(32, m - start) + start;
-    for (let k = start; k < vlen; k++) {
+    var mv = 0;
+    var pv = -1;
+    var start = j * 32;
+    var vlen = Math.min(32, m - start) + start;
+    for (var k = start; k < vlen; k++) {
         peq[b.charCodeAt(k)] |= 1 << k;
     }
-    let score = m;
-    for (let i = 0; i < n; i++) {
-        const eq = peq[a.charCodeAt(i)];
-        const pb = (phc[(i / 32) | 0] >>> i) & 1;
-        const mb = (mhc[(i / 32) | 0] >>> i) & 1;
-        const xv = eq | mv;
-        const xh = ((((eq | mb) & pv) + pv) ^ pv) | eq | mb;
-        let ph = mv | ~(xh | pv);
-        let mh = pv & xh;
+    var score = m;
+    for (var i = 0; i < n; i++) {
+        var eq = peq[a.charCodeAt(i)];
+        var pb = (phc[(i / 32) | 0] >>> i) & 1;
+        var mb = (mhc[(i / 32) | 0] >>> i) & 1;
+        var xv = eq | mv;
+        var xh = ((((eq | mb) & pv) + pv) ^ pv) | eq | mb;
+        var ph = mv | ~(xh | pv);
+        var mh = pv & xh;
         score += (ph >>> (m - 1)) & 1;
         score -= (mh >>> (m - 1)) & 1;
         if ((ph >>> 31) ^ pb) {
@@ -104,14 +107,14 @@ const myers_x = (b, a) => {
         pv = mh | ~(xv | ph);
         mv = ph & xv;
     }
-    for (let k = start; k < vlen; k++) {
+    for (var k = start; k < vlen; k++) {
         peq[b.charCodeAt(k)] = 0;
     }
     return score;
 };
-const distance = (a, b) => {
+var distance = function (a, b) {
     if (a.length < b.length) {
-        const tmp = b;
+        var tmp = b;
         b = a;
         a = tmp;
     }
@@ -123,11 +126,12 @@ const distance = (a, b) => {
     }
     return myers_x(a, b);
 };
-const closest = (str, arr) => {
-    let min_distance = Infinity;
-    let min_index = 0;
-    for (let i = 0; i < arr.length; i++) {
-        const dist = distance(str, arr[i]);
+exports.distance = distance;
+var closest = function (str, arr) {
+    var min_distance = Infinity;
+    var min_index = 0;
+    for (var i = 0; i < arr.length; i++) {
+        var dist = distance(str, arr[i]);
         if (dist < min_distance) {
             min_distance = dist;
             min_index = i;
@@ -135,4 +139,4 @@ const closest = (str, arr) => {
     }
     return arr[min_index];
 };
-export { closest, distance };
+exports.closest = closest;
