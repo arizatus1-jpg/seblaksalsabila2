@@ -2,11 +2,11 @@ export default {
     parse: {
         prelude() {
             return this.createSingleNodeList(
-                this.Scope()
+                this.SelectorList()
             );
         },
-        block(nested = false) {
-            return this.Block(nested);
+        block() {
+            return this.Block(true);
         }
     }
 };

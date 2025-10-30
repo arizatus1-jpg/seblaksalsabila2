@@ -1,4 +1,10 @@
-import { createParser } from './create.js';
-import config from '../syntax/config/parser.js';
+import createSyntax from './create.js';
+import lexerConfig from './config/lexer.js';
+import parserConfig from './config/parser.js';
+import walkerConfig from './config/walker.js';
 
-export default createParser(config);
+export default createSyntax({
+    ...lexerConfig,
+    ...parserConfig,
+    ...walkerConfig
+});

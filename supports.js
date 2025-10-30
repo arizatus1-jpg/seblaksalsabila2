@@ -2,7 +2,7 @@ export default {
     parse: {
         prelude() {
             return this.createSingleNodeList(
-                this.Scope()
+                this.Condition('supports')
             );
         },
         block(nested = false) {

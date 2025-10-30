@@ -2,7 +2,7 @@ export default {
     parse: {
         prelude() {
             return this.createSingleNodeList(
-                this.Scope()
+                this.MediaQueryList()
             );
         },
         block(nested = false) {
