@@ -1,216 +1,188 @@
-# Changelog
+### 2.9.3
 
-All notable changes to this project will be documented in this file.
+- Fix types export for TypeScript 4.7 ❤️ [@pkishorez](https://github.com/pkishorez)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 2.9.2
 
+- Fix: Add "package.json" to exports map
 
-## [2.0.1] - 2020-08-29
-### Fixed
-- Fix issue with `process.argv` when used with interpreters (`coffee`, `ts-node`, etc.), #150.
+### 2.9.1
 
+- Fix: Make minification lossless
+- Fix: Minify to name only if color is opaque
 
-## [2.0.0] - 2020-08-14
-### Changed
-- Full rewrite. Now port from python 3.9.0 & more precise following.
-  See [doc](./doc) for difference and migration info.
-- node.js 10+ required
-- Removed most of local docs in favour of original ones.
+### 2.9.0
 
+- New plugin: Color string minification 🗜
 
-## [1.0.10] - 2018-02-15
-### Fixed
-- Use .concat instead of + for arrays, #122.
+### 2.8.0
 
+- New `delta` method to calculate the perceived color difference between two colors ❤️ [@EricRovell](https://github.com/EricRovell)
 
-## [1.0.9] - 2016-09-29
-### Changed
-- Rerelease after 1.0.8 - deps cleanup.
+### 2.7.0
 
+- Improve `mix` plugin by adding new `tints`, `tones` and `shades` methods ❤️ [@EricRovell](https://github.com/EricRovell)
 
-## [1.0.8] - 2016-09-29
-### Changed
-- Maintenance (deps bump, fix node 6.5+ tests, coverage report).
+### 2.6.0
 
+- Support "double split complementary" color harmony generation ❤️ [@EricRovell](https://github.com/EricRovell) & [@lbragile](https://github.com/lbragile)
 
-## [1.0.7] - 2016-03-17
-### Changed
-- Teach `addArgument` to accept string arg names. #97, @tomxtobin.
+### 2.5.0
 
+- New `closest` option of `toName` method allows you to find the closest color if there is no exact match
 
-## [1.0.6] - 2016-02-06
-### Changed
-- Maintenance: moved to eslint & updated CS.
+### 2.4.0
 
+- New plugin: Color harmonies generator ❤️ [@EricRovell](https://github.com/EricRovell)
 
-## [1.0.5] - 2016-02-05
-### Changed
-- Removed lodash dependency to significantly reduce install size.
-  Thanks to @mourner.
+### 2.3.0
 
+- Add new `isEqual` method ❤️ [@EricRovell](https://github.com/EricRovell)
 
-## [1.0.4] - 2016-01-17
-### Changed
-- Maintenance: lodash update to 4.0.0.
+### 2.2.0
 
+- New plugin: CMYK color space ❤️ [@EricRovell](https://github.com/EricRovell)
 
-## [1.0.3] - 2015-10-27
-### Fixed
-- Fix parse `=` in args: `--examplepath="C:\myfolder\env=x64"`. #84, @CatWithApple.
+### 2.1.0
 
+- Add new `hue` and `rotate` methods
 
-## [1.0.2] - 2015-03-22
-### Changed
-- Relaxed lodash version dependency.
+### 2.0.1
 
+- Improve the precision of alpha values
 
-## [1.0.1] - 2015-02-20
-### Changed
-- Changed dependencies to be compatible with ancient nodejs.
+### 2.0.0
 
+- Strict string color parsing conforming to the CSS Color Level specifications
 
-## [1.0.0] - 2015-02-19
-### Changed
-- Maintenance release.
-- Replaced `underscore` with `lodash`.
-- Bumped version to 1.0.0 to better reflect semver meaning.
-- HISTORY.md -> CHANGELOG.md
+### 1.7.2
 
+- Simplify package "exports" field to improve different environments support
 
-## [0.1.16] - 2013-12-01
-### Changed
-- Maintenance release. Updated dependencies and docs.
+### 1.7.1
 
+- Parse a color name disregarding the case
 
-## [0.1.15] - 2013-05-13
-### Fixed
-- Fixed #55, @trebor89
+### 1.7.0
 
+- New `getFormat` utility
+- Support HWB color strings (CSS functional notation)
+- Clamp LAB values as defined in CSS Color Level 4 specs
 
-## [0.1.14] - 2013-05-12
-### Fixed
-- Fixed #62, @maxtaco
+### 1.6.0
 
+- Improvement: You can now use every angle unit supported by CSS (`deg`, `rad`, `grad`, `turn`)
 
-## [0.1.13] - 2013-04-08
-### Changed
-- Added `.npmignore` to reduce package size
+### 1.5.0
 
+- New utility: Random color generation
 
-## [0.1.12] - 2013-02-10
-### Fixed
-- Fixed conflictHandler (#46), @hpaulj
+### 1.4.1
 
+- Mix colors through CIE LAB color space
 
-## [0.1.11] - 2013-02-07
-### Added
-- Added 70+ tests (ported from python), @hpaulj
-- Added conflictHandler, @applepicke
-- Added fromfilePrefixChar, @hpaulj
+### 1.4.0
 
-### Fixed
-- Multiple bugfixes, @hpaulj
+- New plugin: Color mixing
+- Adjust XYZ, LAB and LCH conversions to the D50 white point ([according to the latest CSS specs](https://drafts.csswg.org/css-color-5/#color-spaces)).
 
+### 1.3.1
 
-## [0.1.10] - 2012-12-30
-### Added
-- Added [mutual exclusion](http://docs.python.org/dev/library/argparse.html#mutual-exclusion)
-  support, thanks to @hpaulj
+- Support modern CSS notations of RGB, HSL and LCH color functions
 
-### Fixed
-- Fixed options check for `storeConst` & `appendConst` actions, thanks to @hpaulj
+### 1.3.0
 
+- New plugin: CIE LCH color space
 
-## [0.1.9] - 2012-12-27
-### Fixed
-- Fixed option dest interferens with other options (issue #23), thanks to @hpaulj
-- Fixed default value behavior with `*` positionals, thanks to @hpaulj
-- Improve `getDefault()` behavior, thanks to @hpaulj
-- Improve negative argument parsing, thanks to @hpaulj
+### 1.2.1
 
+- Fix: Do not treat 7-digit hex as a valid color ❤️ [@subzey](https://github.com/subzey)
+- Parser update: Turn NaN input values into valid numbers ❤️ [@subzey](https://github.com/subzey)
 
-## [0.1.8] - 2012-12-01
-### Fixed
-- Fixed parser parents (issue #19), thanks to @hpaulj
-- Fixed negative argument parse (issue #20), thanks to @hpaulj
+### 1.2.0
 
+- New plugin: CIE LAB color space
 
-## [0.1.7] - 2012-10-14
-### Fixed
-- Fixed 'choices' argument parse (issue #16)
-- Fixed stderr output (issue #15)
+### 1.1.1
 
+- Make bundle 1% lighter
 
-## [0.1.6] - 2012-09-09
-### Fixed
-- Fixed check for conflict of options (thanks to @tomxtobin)
+### 1.1.0
 
+- Add `isValid` method
 
-## [0.1.5] - 2012-09-03
-### Fixed
-- Fix parser #setDefaults method (thanks to @tomxtobin)
+### 1.0
 
+- An official production-ready release
 
-## [0.1.4] - 2012-07-30
-### Fixed
-- Fixed pseudo-argument support (thanks to @CGamesPlay)
-- Fixed addHelp default (should be true), if not set (thanks to @benblank)
+### 0.10.2
 
+- Sort named colors dictionary for better compression ❤️ [@subzey](https://github.com/subzey)
 
-## [0.1.3] - 2012-06-27
-### Fixed
-- Fixed formatter api name: Formatter -> HelpFormatter
+### 0.10.1
 
+- Ignore `null` input in the parsers
 
-## [0.1.2] - 2012-05-29
-### Fixed
-- Removed excess whitespace in help
-- Fixed error reporting, when parcer with subcommands
-  called with empty arguments
+### 0.10
 
-### Added
-- Added basic tests
+- Shorten conversion method names (`toRgba` to `toRgb`, etc)
 
+### 0.9.3
 
-## [0.1.1] - 2012-05-23
-### Fixed
-- Fixed line wrapping in help formatter
-- Added better error reporting on invalid arguments
+- New plugin: HWB color model
+- More accurate HSL and HSV conversions
 
+### 0.9.2
 
-## [0.1.0] - 2012-05-16
-### Added
-- First release.
+- Names plugin: Support "transparent" keyword
 
+### 0.9.1
 
-[2.0.1]: https://github.com/nodeca/argparse/compare/2.0.0...2.0.1
-[2.0.0]: https://github.com/nodeca/argparse/compare/1.0.10...2.0.0
-[1.0.10]: https://github.com/nodeca/argparse/compare/1.0.9...1.0.10
-[1.0.9]: https://github.com/nodeca/argparse/compare/1.0.8...1.0.9
-[1.0.8]: https://github.com/nodeca/argparse/compare/1.0.7...1.0.8
-[1.0.7]: https://github.com/nodeca/argparse/compare/1.0.6...1.0.7
-[1.0.6]: https://github.com/nodeca/argparse/compare/1.0.5...1.0.6
-[1.0.5]: https://github.com/nodeca/argparse/compare/1.0.4...1.0.5
-[1.0.4]: https://github.com/nodeca/argparse/compare/1.0.3...1.0.4
-[1.0.3]: https://github.com/nodeca/argparse/compare/1.0.2...1.0.3
-[1.0.2]: https://github.com/nodeca/argparse/compare/1.0.1...1.0.2
-[1.0.1]: https://github.com/nodeca/argparse/compare/1.0.0...1.0.1
-[1.0.0]: https://github.com/nodeca/argparse/compare/0.1.16...1.0.0
-[0.1.16]: https://github.com/nodeca/argparse/compare/0.1.15...0.1.16
-[0.1.15]: https://github.com/nodeca/argparse/compare/0.1.14...0.1.15
-[0.1.14]: https://github.com/nodeca/argparse/compare/0.1.13...0.1.14
-[0.1.13]: https://github.com/nodeca/argparse/compare/0.1.12...0.1.13
-[0.1.12]: https://github.com/nodeca/argparse/compare/0.1.11...0.1.12
-[0.1.11]: https://github.com/nodeca/argparse/compare/0.1.10...0.1.11
-[0.1.10]: https://github.com/nodeca/argparse/compare/0.1.9...0.1.10
-[0.1.9]: https://github.com/nodeca/argparse/compare/0.1.8...0.1.9
-[0.1.8]: https://github.com/nodeca/argparse/compare/0.1.7...0.1.8
-[0.1.7]: https://github.com/nodeca/argparse/compare/0.1.6...0.1.7
-[0.1.6]: https://github.com/nodeca/argparse/compare/0.1.5...0.1.6
-[0.1.5]: https://github.com/nodeca/argparse/compare/0.1.4...0.1.5
-[0.1.4]: https://github.com/nodeca/argparse/compare/0.1.3...0.1.4
-[0.1.3]: https://github.com/nodeca/argparse/compare/0.1.2...0.1.3
-[0.1.2]: https://github.com/nodeca/argparse/compare/0.1.1...0.1.2
-[0.1.1]: https://github.com/nodeca/argparse/compare/0.1.0...0.1.1
-[0.1.0]: https://github.com/nodeca/argparse/releases/tag/0.1.0
+- Improve package exports
+
+### 0.9
+
+- Add CommonJS exports
+
+### 0.8
+
+- New plugin: a11y (Accessibility)
+
+### 0.7
+
+- New plugin: CIE XYZ color space
+
+### 0.6.2
+
+- 20% speed improvement ❤️ [@jeetiss](https://github.com/jeetiss)
+
+### 0.6.1
+
+- 100% code coverage
+
+### 0.6
+
+- Make plugin available in Parcel which doesn't support exports map yet
+- Fix names plugin TS declarations export
+- Documentation
+
+### 0.5
+
+- New plugin: CSS color names
+
+### 0.4
+
+- Make the library ESM-first
+- Add code coverage reports
+
+### 0.3
+
+- Implement Plugin API
+
+### 0.2
+
+- Support 4 and 8 digit Hex
+
+### 0.1
+
+- Basic API

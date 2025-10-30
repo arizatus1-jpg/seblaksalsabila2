@@ -1,586 +1,1053 @@
-# braces [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=W8YFZ425KND68) [![NPM version](https://img.shields.io/npm/v/braces.svg?style=flat)](https://www.npmjs.com/package/braces) [![NPM monthly downloads](https://img.shields.io/npm/dm/braces.svg?style=flat)](https://npmjs.org/package/braces) [![NPM total downloads](https://img.shields.io/npm/dt/braces.svg?style=flat)](https://npmjs.org/package/braces) [![Linux Build Status](https://img.shields.io/travis/micromatch/braces.svg?style=flat&label=Travis)](https://travis-ci.org/micromatch/braces)
-
-> Bash-like brace expansion, implemented in JavaScript. Safer than other brace expansion libs, with complete support for the Bash 4.3 braces specification, without sacrificing speed.
-
-Please consider following this project's author, [Jon Schlinkert](https://github.com/jonschlinkert), and consider starring the project to show your :heart: and support.
-
-## Install
-
-Install with [npm](https://www.npmjs.com/):
-
-```sh
-$ npm install --save braces
-```
-
-## v3.0.0 Released!!
-
-See the [changelog](CHANGELOG.md) for details.
-
-## Why use braces?
-
-Brace patterns make globs more powerful by adding the ability to match specific ranges and sequences of characters.
-
-- **Accurate** - complete support for the [Bash 4.3 Brace Expansion](www.gnu.org/software/bash/) specification (passes all of the Bash braces tests)
-- **[fast and performant](#benchmarks)** - Starts fast, runs fast and [scales well](#performance) as patterns increase in complexity.
-- **Organized code base** - The parser and compiler are easy to maintain and update when edge cases crop up.
-- **Well-tested** - Thousands of test assertions, and passes all of the Bash, minimatch, and [brace-expansion](https://github.com/juliangruber/brace-expansion) unit tests (as of the date this was written).
-- **Safer** - You shouldn't have to worry about users defining aggressive or malicious brace patterns that can break your application. Braces takes measures to prevent malicious regex that can be used for DDoS attacks (see [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html)).
-- [Supports lists](#lists) - (aka "sets") `a/{b,c}/d` => `['a/b/d', 'a/c/d']`
-- [Supports sequences](#sequences) - (aka "ranges") `{01..03}` => `['01', '02', '03']`
-- [Supports steps](#steps) - (aka "increments") `{2..10..2}` => `['2', '4', '6', '8', '10']`
-- [Supports escaping](#escaping) - To prevent evaluation of special characters.
-
-## Usage
-
-The main export is a function that takes one or more brace `patterns` and `options`.
-
-```js
-const braces = require('braces');
-// braces(patterns[, options]);
-
-console.log(braces(['{01..05}', '{a..e}']));
-//=> ['(0[1-5])', '([a-e])']
-
-console.log(braces(['{01..05}', '{a..e}'], { expand: true }));
-//=> ['01', '02', '03', '04', '05', 'a', 'b', 'c', 'd', 'e']
-```
-
-### Brace Expansion vs. Compilation
-
-By default, brace patterns are compiled into strings that are optimized for creating regular expressions and matching.
-
-**Compiled**
-
-```js
-console.log(braces('a/{x,y,z}/b'));
-//=> ['a/(x|y|z)/b']
-console.log(braces(['a/{01..20}/b', 'a/{1..5}/b']));
-//=> [ 'a/(0[1-9]|1[0-9]|20)/b', 'a/([1-5])/b' ]
-```
-
-**Expanded**
-
-Enable brace expansion by setting the `expand` option to true, or by using [braces.expand()](#expand) (returns an array similar to what you'd expect from Bash, or `echo {1..5}`, or [minimatch](https://github.com/isaacs/minimatch)):
-
-```js
-console.log(braces('a/{x,y,z}/b', { expand: true }));
-//=> ['a/x/b', 'a/y/b', 'a/z/b']
-
-console.log(braces.expand('{01..10}'));
-//=> ['01','02','03','04','05','06','07','08','09','10']
-```
-
-### Lists
-
-Expand lists (like Bash "sets"):
-
-```js
-console.log(braces('a/{foo,bar,baz}/*.js'));
-//=> ['a/(foo|bar|baz)/*.js']
-
-console.log(braces.expand('a/{foo,bar,baz}/*.js'));
-//=> ['a/foo/*.js', 'a/bar/*.js', 'a/baz/*.js']
-```
-
-### Sequences
-
-Expand ranges of characters (like Bash "sequences"):
-
-```js
-console.log(braces.expand('{1..3}')); // ['1', '2', '3']
-console.log(braces.expand('a/{1..3}/b')); // ['a/1/b', 'a/2/b', 'a/3/b']
-console.log(braces('{a..c}', { expand: true })); // ['a', 'b', 'c']
-console.log(braces('foo/{a..c}', { expand: true })); // ['foo/a', 'foo/b', 'foo/c']
-
-// supports zero-padded ranges
-console.log(braces('a/{01..03}/b')); //=> ['a/(0[1-3])/b']
-console.log(braces('a/{001..300}/b')); //=> ['a/(0{2}[1-9]|0[1-9][0-9]|[12][0-9]{2}|300)/b']
-```
-
-See [fill-range](https://github.com/jonschlinkert/fill-range) for all available range-expansion options.
-
-### Steppped ranges
-
-Steps, or increments, may be used with ranges:
-
-```js
-console.log(braces.expand('{2..10..2}'));
-//=> ['2', '4', '6', '8', '10']
-
-console.log(braces('{2..10..2}'));
-//=> ['(2|4|6|8|10)']
-```
-
-When the [.optimize](#optimize) method is used, or [options.optimize](#optionsoptimize) is set to true, sequences are passed to [to-regex-range](https://github.com/jonschlinkert/to-regex-range) for expansion.
-
-### Nesting
-
-Brace patterns may be nested. The results of each expanded string are not sorted, and left to right order is preserved.
-
-**"Expanded" braces**
-
-```js
-console.log(braces.expand('a{b,c,/{x,y}}/e'));
-//=> ['ab/e', 'ac/e', 'a/x/e', 'a/y/e']
-
-console.log(braces.expand('a/{x,{1..5},y}/c'));
-//=> ['a/x/c', 'a/1/c', 'a/2/c', 'a/3/c', 'a/4/c', 'a/5/c', 'a/y/c']
-```
-
-**"Optimized" braces**
-
-```js
-console.log(braces('a{b,c,/{x,y}}/e'));
-//=> ['a(b|c|/(x|y))/e']
-
-console.log(braces('a/{x,{1..5},y}/c'));
-//=> ['a/(x|([1-5])|y)/c']
-```
-
-### Escaping
-
-**Escaping braces**
-
-A brace pattern will not be expanded or evaluted if _either the opening or closing brace is escaped_:
-
-```js
-console.log(braces.expand('a\\{d,c,b}e'));
-//=> ['a{d,c,b}e']
-
-console.log(braces.expand('a{d,c,b\\}e'));
-//=> ['a{d,c,b}e']
-```
-
-**Escaping commas**
-
-Commas inside braces may also be escaped:
-
-```js
-console.log(braces.expand('a{b\\,c}d'));
-//=> ['a{b,c}d']
-
-console.log(braces.expand('a{d\\,c,b}e'));
-//=> ['ad,ce', 'abe']
-```
-
-**Single items**
-
-Following bash conventions, a brace pattern is also not expanded when it contains a single character:
-
-```js
-console.log(braces.expand('a{b}c'));
-//=> ['a{b}c']
-```
-
-## Options
-
-### options.maxLength
-
-**Type**: `Number`
-
-**Default**: `10,000`
-
-**Description**: Limit the length of the input string. Useful when the input string is generated or your application allows users to pass a string, et cetera.
-
-```js
-console.log(braces('a/{b,c}/d', { maxLength: 3 })); //=> throws an error
-```
-
-### options.expand
-
-**Type**: `Boolean`
-
-**Default**: `undefined`
-
-**Description**: Generate an "expanded" brace pattern (alternatively you can use the `braces.expand()` method, which does the same thing).
-
-```js
-console.log(braces('a/{b,c}/d', { expand: true }));
-//=> [ 'a/b/d', 'a/c/d' ]
-```
-
-### options.nodupes
-
-**Type**: `Boolean`
-
-**Default**: `undefined`
-
-**Description**: Remove duplicates from the returned array.
-
-### options.rangeLimit
-
-**Type**: `Number`
-
-**Default**: `1000`
-
-**Description**: To prevent malicious patterns from being passed by users, an error is thrown when `braces.expand()` is used or `options.expand` is true and the generated range will exceed the `rangeLimit`.
-
-You can customize `options.rangeLimit` or set it to `Inifinity` to disable this altogether.
-
-**Examples**
-
-```js
-// pattern exceeds the "rangeLimit", so it's optimized automatically
-console.log(braces.expand('{1..1000}'));
-//=> ['([1-9]|[1-9][0-9]{1,2}|1000)']
-
-// pattern does not exceed "rangeLimit", so it's NOT optimized
-console.log(braces.expand('{1..100}'));
-//=> ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100']
-```
-
-### options.transform
-
-**Type**: `Function`
-
-**Default**: `undefined`
-
-**Description**: Customize range expansion.
-
-**Example: Transforming non-numeric values**
-
-```js
-const alpha = braces.expand('x/{a..e}/y', {
-  transform(value, index) {
-    // When non-numeric values are passed, "value" is a character code.
-    return 'foo/' + String.fromCharCode(value) + '-' + index;
-  },
-});
-console.log(alpha);
-//=> [ 'x/foo/a-0/y', 'x/foo/b-1/y', 'x/foo/c-2/y', 'x/foo/d-3/y', 'x/foo/e-4/y' ]
-```
-
-**Example: Transforming numeric values**
-
-```js
-const numeric = braces.expand('{1..5}', {
-  transform(value) {
-    // when numeric values are passed, "value" is a number
-    return 'foo/' + value * 2;
-  },
-});
-console.log(numeric);
-//=> [ 'foo/2', 'foo/4', 'foo/6', 'foo/8', 'foo/10' ]
-```
-
-### options.quantifiers
-
-**Type**: `Boolean`
-
-**Default**: `undefined`
-
-**Description**: In regular expressions, quanitifiers can be used to specify how many times a token can be repeated. For example, `a{1,3}` will match the letter `a` one to three times.
-
-Unfortunately, regex quantifiers happen to share the same syntax as [Bash lists](#lists)
-
-The `quantifiers` option tells braces to detect when [regex quantifiers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp#quantifiers) are defined in the given pattern, and not to try to expand them as lists.
-
-**Examples**
-
-```js
-const braces = require('braces');
-console.log(braces('a/b{1,3}/{x,y,z}'));
-//=> [ 'a/b(1|3)/(x|y|z)' ]
-console.log(braces('a/b{1,3}/{x,y,z}', { quantifiers: true }));
-//=> [ 'a/b{1,3}/(x|y|z)' ]
-console.log(braces('a/b{1,3}/{x,y,z}', { quantifiers: true, expand: true }));
-//=> [ 'a/b{1,3}/x', 'a/b{1,3}/y', 'a/b{1,3}/z' ]
-```
-
-### options.keepEscaping
-
-**Type**: `Boolean`
-
-**Default**: `undefined`
-
-**Description**: Do not strip backslashes that were used for escaping from the result.
-
-## What is "brace expansion"?
-
-Brace expansion is a type of parameter expansion that was made popular by unix shells for generating lists of strings, as well as regex-like matching when used alongside wildcards (globs).
-
-In addition to "expansion", braces are also used for matching. In other words:
-
-- [brace expansion](#brace-expansion) is for generating new lists
-- [brace matching](#brace-matching) is for filtering existing lists
-
-<details>
-<summary><strong>More about brace expansion</strong> (click to expand)</summary>
-
-There are two main types of brace expansion:
-
-1. **lists**: which are defined using comma-separated values inside curly braces: `{a,b,c}`
-2. **sequences**: which are defined using a starting value and an ending value, separated by two dots: `a{1..3}b`. Optionally, a third argument may be passed to define a "step" or increment to use: `a{1..100..10}b`. These are also sometimes referred to as "ranges".
-
-Here are some example brace patterns to illustrate how they work:
-
-**Sets**
-
-```
-{a,b,c}       => a b c
-{a,b,c}{1,2}  => a1 a2 b1 b2 c1 c2
-```
-
-**Sequences**
-
-```
-{1..9}        => 1 2 3 4 5 6 7 8 9
-{4..-4}       => 4 3 2 1 0 -1 -2 -3 -4
-{1..20..3}    => 1 4 7 10 13 16 19
-{a..j}        => a b c d e f g h i j
-{j..a}        => j i h g f e d c b a
-{a..z..3}     => a d g j m p s v y
-```
-
-**Combination**
-
-Sets and sequences can be mixed together or used along with any other strings.
-
-```
-{a,b,c}{1..3}   => a1 a2 a3 b1 b2 b3 c1 c2 c3
-foo/{a,b,c}/bar => foo/a/bar foo/b/bar foo/c/bar
-```
-
-The fact that braces can be "expanded" from relatively simple patterns makes them ideal for quickly generating test fixtures, file paths, and similar use cases.
-
-## Brace matching
-
-In addition to _expansion_, brace patterns are also useful for performing regular-expression-like matching.
-
-For example, the pattern `foo/{1..3}/bar` would match any of following strings:
-
-```
-foo/1/bar
-foo/2/bar
-foo/3/bar
-```
-
-But not:
-
-```
-baz/1/qux
-baz/2/qux
-baz/3/qux
-```
-
-Braces can also be combined with [glob patterns](https://github.com/jonschlinkert/micromatch) to perform more advanced wildcard matching. For example, the pattern `*/{1..3}/*` would match any of following strings:
-
-```
-foo/1/bar
-foo/2/bar
-foo/3/bar
-baz/1/qux
-baz/2/qux
-baz/3/qux
-```
-
-## Brace matching pitfalls
-
-Although brace patterns offer a user-friendly way of matching ranges or sets of strings, there are also some major disadvantages and potential risks you should be aware of.
-
-### tldr
-
-**"brace bombs"**
-
-- brace expansion can eat up a huge amount of processing resources
-- as brace patterns increase _linearly in size_, the system resources required to expand the pattern increase exponentially
-- users can accidentally (or intentially) exhaust your system's resources resulting in the equivalent of a DoS attack (bonus: no programming knowledge is required!)
-
-For a more detailed explanation with examples, see the [geometric complexity](#geometric-complexity) section.
-
-### The solution
-
-Jump to the [performance section](#performance) to see how Braces solves this problem in comparison to other libraries.
-
-### Geometric complexity
-
-At minimum, brace patterns with sets limited to two elements have quadradic or `O(n^2)` complexity. But the complexity of the algorithm increases exponentially as the number of sets, _and elements per set_, increases, which is `O(n^c)`.
-
-For example, the following sets demonstrate quadratic (`O(n^2)`) complexity:
-
-```
-{1,2}{3,4}      => (2X2)    => 13 14 23 24
-{1,2}{3,4}{5,6} => (2X2X2)  => 135 136 145 146 235 236 245 246
-```
-
-But add an element to a set, and we get a n-fold Cartesian product with `O(n^c)` complexity:
-
-```
-{1,2,3}{4,5,6}{7,8,9} => (3X3X3) => 147 148 149 157 158 159 167 168 169 247 248
-                                    249 257 258 259 267 268 269 347 348 349 357
-                                    358 359 367 368 369
-```
-
-Now, imagine how this complexity grows given that each element is a n-tuple:
-
-```
-{1..100}{1..100}         => (100X100)     => 10,000 elements (38.4 kB)
-{1..100}{1..100}{1..100} => (100X100X100) => 1,000,000 elements (5.76 MB)
-```
-
-Although these examples are clearly contrived, they demonstrate how brace patterns can quickly grow out of control.
-
-**More information**
-
-Interested in learning more about brace expansion?
-
-- [linuxjournal/bash-brace-expansion](http://www.linuxjournal.com/content/bash-brace-expansion)
-- [rosettacode/Brace_expansion](https://rosettacode.org/wiki/Brace_expansion)
-- [cartesian product](https://en.wikipedia.org/wiki/Cartesian_product)
-
-</details>
-
-## Performance
-
-Braces is not only screaming fast, it's also more accurate the other brace expansion libraries.
-
-### Better algorithms
-
-Fortunately there is a solution to the ["brace bomb" problem](#brace-matching-pitfalls): _don't expand brace patterns into an array when they're used for matching_.
-
-Instead, convert the pattern into an optimized regular expression. This is easier said than done, and braces is the only library that does this currently.
-
-**The proof is in the numbers**
-
-Minimatch gets exponentially slower as patterns increase in complexity, braces does not. The following results were generated using `braces()` and `minimatch.braceExpand()`, respectively.
-
-| **Pattern**                 | **braces**          | **[minimatch][]**            |
-| --------------------------- | ------------------- | ---------------------------- |
-| `{1..9007199254740991}`[^1] | `298 B` (5ms 459μs) | N/A (freezes)                |
-| `{1..1000000000000000}`     | `41 B` (1ms 15μs)   | N/A (freezes)                |
-| `{1..100000000000000}`      | `40 B` (890μs)      | N/A (freezes)                |
-| `{1..10000000000000}`       | `39 B` (2ms 49μs)   | N/A (freezes)                |
-| `{1..1000000000000}`        | `38 B` (608μs)      | N/A (freezes)                |
-| `{1..100000000000}`         | `37 B` (397μs)      | N/A (freezes)                |
-| `{1..10000000000}`          | `35 B` (983μs)      | N/A (freezes)                |
-| `{1..1000000000}`           | `34 B` (798μs)      | N/A (freezes)                |
-| `{1..100000000}`            | `33 B` (733μs)      | N/A (freezes)                |
-| `{1..10000000}`             | `32 B` (5ms 632μs)  | `78.89 MB` (16s 388ms 569μs) |
-| `{1..1000000}`              | `31 B` (1ms 381μs)  | `6.89 MB` (1s 496ms 887μs)   |
-| `{1..100000}`               | `30 B` (950μs)      | `588.89 kB` (146ms 921μs)    |
-| `{1..10000}`                | `29 B` (1ms 114μs)  | `48.89 kB` (14ms 187μs)      |
-| `{1..1000}`                 | `28 B` (760μs)      | `3.89 kB` (1ms 453μs)        |
-| `{1..100}`                  | `22 B` (345μs)      | `291 B` (196μs)              |
-| `{1..10}`                   | `10 B` (533μs)      | `20 B` (37μs)                |
-| `{1..3}`                    | `7 B` (190μs)       | `5 B` (27μs)                 |
-
-### Faster algorithms
-
-When you need expansion, braces is still much faster.
-
-_(the following results were generated using `braces.expand()` and `minimatch.braceExpand()`, respectively)_
-
-| **Pattern**     | **braces**                  | **[minimatch][]**            |
-| --------------- | --------------------------- | ---------------------------- |
-| `{1..10000000}` | `78.89 MB` (2s 698ms 642μs) | `78.89 MB` (18s 601ms 974μs) |
-| `{1..1000000}`  | `6.89 MB` (458ms 576μs)     | `6.89 MB` (1s 491ms 621μs)   |
-| `{1..100000}`   | `588.89 kB` (20ms 728μs)    | `588.89 kB` (156ms 919μs)    |
-| `{1..10000}`    | `48.89 kB` (2ms 202μs)      | `48.89 kB` (13ms 641μs)      |
-| `{1..1000}`     | `3.89 kB` (1ms 796μs)       | `3.89 kB` (1ms 958μs)        |
-| `{1..100}`      | `291 B` (424μs)             | `291 B` (211μs)              |
-| `{1..10}`       | `20 B` (487μs)              | `20 B` (72μs)                |
-| `{1..3}`        | `5 B` (166μs)               | `5 B` (27μs)                 |
-
-If you'd like to run these comparisons yourself, see [test/support/generate.js](test/support/generate.js).
+<div align="center">
+  <a href="https://colord.omgovich.ru/">
+    <img src="assets/logo.png" width="280" height="210" alt="colord" />
+  </a>
+</div>
+
+<div align="center">
+  <a href="https://npmjs.org/package/colord">
+    <img alt="npm" src="https://img.shields.io/npm/v/colord.svg?labelColor=dd3a5e&color=6ead0a" />
+  </a>
+  <a href="https://github.com/omgovich/colord/actions">
+    <img alt="build" src="https://img.shields.io/github/workflow/status/omgovich/colord/Node.js%20CI/master.svg?labelColor=dd3a5e&color=6ead0a" />
+  </a>
+  <a href="https://codecov.io/gh/omgovich/colord">
+    <img alt="coverage" src="https://img.shields.io/codecov/c/github/omgovich/colord.svg?labelColor=dd3a5e&color=6ead0a" />
+  </a>
+  <a href="https://npmjs.org/package/colord">
+    <img alt="no dependencies" src="https://badgen.net/bundlephobia/dependency-count/colord?labelColor=dd3a5e&color=6ead0a" />
+  </a>
+  <a href="https://npmjs.org/package/colord">
+    <img alt="types included" src="https://badgen.net/npm/types/colord?labelColor=dd3a5e&color=6ead0a" />
+  </a>
+</div>
+
+<div align="center">
+  <strong>Colord</strong> is a tiny yet powerful tool for high-performance color manipulations and conversions.
+</div>
+
+## Features
+
+- 📦 **Small**: Just **1.7 KB** gzipped ([3x+ lighter](#benchmarks) than **color** and **tinycolor2**)
+- 🚀 **Fast**: [3x+ faster](#benchmarks) than **color** and **tinycolor2**
+- 😍 **Simple**: Chainable API and familiar patterns
+- 💪 **Immutable**: No need to worry about data mutations
+- 🛡 **Bulletproof**: Written in strict TypeScript and has 100% test coverage
+- 🗂 **Typed**: Ships with [types included](#types)
+- 🏗 **Extendable**: Built-in [plugin system](#plugins) to add new functionality
+- 📚 **CSS-compliant**: Strictly follows CSS Color Level specifications
+- 👫 **Works everywhere**: Supports all browsers and Node.js
+- 💨 **Dependency-free**
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
 
 ## Benchmarks
 
-### Running benchmarks
+| Library                       | <nobr>Operations/sec</nobr>   | Size<br /> (minified)                                                                                                 | Size<br /> (gzipped)                                                                                                     | Dependencies                                                                                                                         | Type declarations                                                                                                |
+| ----------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| <nobr><b>colord 👑</b></nobr> | <nobr><b>3,524,989</b></nobr> | [![](https://badgen.net/bundlephobia/min/colord?color=6ead0a&label=)](https://bundlephobia.com/result?p=colord)       | [![](https://badgen.net/bundlephobia/minzip/colord?color=6ead0a&label=)](https://bundlephobia.com/result?p=colord)       | [![](https://badgen.net/bundlephobia/dependency-count/colord?color=6ead0a&label=)](https://bundlephobia.com/result?p=colord)         | [![](https://badgen.net/npm/types/colord?color=6ead0a&label=)](https://bundlephobia.com/result?p=colord)         |
+| color                         | 744,263                       | [![](https://badgen.net/bundlephobia/min/color?color=red&label=)](https://bundlephobia.com/result?p=color)            | [![](https://badgen.net/bundlephobia/minzip/color?color=red&label=)](https://bundlephobia.com/result?p=color)            | [![](https://badgen.net/bundlephobia/dependency-count/color?color=red&label=)](https://bundlephobia.com/result?p=color)              | [![](https://badgen.net/npm/types/color?color=e6591d&label=)](https://bundlephobia.com/result?p=color)           |
+| tinycolor2                    | 971,312                       | [![](https://badgen.net/bundlephobia/min/tinycolor2?color=red&label=)](https://bundlephobia.com/result?p=tinycolor2)  | [![](https://badgen.net/bundlephobia/minzip/tinycolor2?color=red&label=)](https://bundlephobia.com/result?p=tinycolor2)  | [![](https://badgen.net/bundlephobia/dependency-count/tinycolor2?color=6ead0a&label=)](https://bundlephobia.com/result?p=tinycolor2) | [![](https://badgen.net/npm/types/tinycolor2?color=e6591d&label=)](https://bundlephobia.com/result?p=tinycolor2) |
+| ac-colors                     | 660,722                       | [![](https://badgen.net/bundlephobia/min/ac-colors?color=e6591d&label=)](https://bundlephobia.com/result?p=ac-colors) | [![](https://badgen.net/bundlephobia/minzip/ac-colors?color=e6591d&label=)](https://bundlephobia.com/result?p=ac-colors) | [![](https://badgen.net/bundlephobia/dependency-count/ac-colors?color=6ead0a&label=)](https://bundlephobia.com/result?p=ac-colors)   | [![](https://badgen.net/npm/types/ac-colors?color=red&label=)](https://bundlephobia.com/result?p=ac-colors)      |
+| chroma-js                     | 962,967                       | [![](https://badgen.net/bundlephobia/min/chroma-js?color=red&label=)](https://bundlephobia.com/result?p=chroma-js)    | [![](https://badgen.net/bundlephobia/minzip/chroma-js?color=red&label=)](https://bundlephobia.com/result?p=chroma-js)    | [![](https://badgen.net/bundlephobia/dependency-count/chroma-js?color=red&label=)](https://bundlephobia.com/result?p=chroma-js)      | [![](https://badgen.net/npm/types/chroma-js?color=e6591d&label=)](https://bundlephobia.com/result?p=chroma-js)   |
 
-Install dev dependencies:
+The performance results were generated on a MBP 2019, 2,6 GHz Intel Core i7 by running `npm run benchmark` in the library folder. See [tests/benchmark.ts](https://github.com/omgovich/colord/blob/master/tests/benchmark.ts).
 
-```bash
-npm i -d && npm benchmark
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Getting Started
+
+```
+npm i colord
 ```
 
-### Latest results
+```js
+import { colord } from "colord";
 
-Braces is more accurate, without sacrificing performance.
-
-```bash
-● expand - range (expanded)
-     braces x 53,167 ops/sec ±0.12% (102 runs sampled)
-  minimatch x 11,378 ops/sec ±0.10% (102 runs sampled)
-● expand - range (optimized for regex)
-     braces x 373,442 ops/sec ±0.04% (100 runs sampled)
-  minimatch x 3,262 ops/sec ±0.18% (100 runs sampled)
-● expand - nested ranges (expanded)
-     braces x 33,921 ops/sec ±0.09% (99 runs sampled)
-  minimatch x 10,855 ops/sec ±0.28% (100 runs sampled)
-● expand - nested ranges (optimized for regex)
-     braces x 287,479 ops/sec ±0.52% (98 runs sampled)
-  minimatch x 3,219 ops/sec ±0.28% (101 runs sampled)
-● expand - set (expanded)
-     braces x 238,243 ops/sec ±0.19% (97 runs sampled)
-  minimatch x 538,268 ops/sec ±0.31% (96 runs sampled)
-● expand - set (optimized for regex)
-     braces x 321,844 ops/sec ±0.10% (97 runs sampled)
-  minimatch x 140,600 ops/sec ±0.15% (100 runs sampled)
-● expand - nested sets (expanded)
-     braces x 165,371 ops/sec ±0.42% (96 runs sampled)
-  minimatch x 337,720 ops/sec ±0.28% (100 runs sampled)
-● expand - nested sets (optimized for regex)
-     braces x 242,948 ops/sec ±0.12% (99 runs sampled)
-  minimatch x 87,403 ops/sec ±0.79% (96 runs sampled)
+colord("#ff0000").grayscale().alpha(0.25).toRgbString(); // "rgba(128, 128, 128, 0.25)"
+colord("rgb(192, 192, 192)").isLight(); // true
+colord("hsl(0, 50%, 50%)").darken(0.25).toHex(); // "#602020"
 ```
 
-## About
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Supported Color Models
+
+- Hexadecimal strings (including 3, 4 and 8 digit notations)
+- RGB strings and objects
+- HSL strings and objects
+- HSV objects
+- Color names ([via plugin](#plugins))
+- HWB objects and strings ([via plugin](#plugins))
+- CMYK objects and strings ([via plugin](#plugins))
+- LCH objects and strings ([via plugin](#plugins))
+- LAB objects ([via plugin](#plugins))
+- XYZ objects ([via plugin](#plugins))
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## API
+
+### Color parsing
 
 <details>
-<summary><strong>Contributing</strong></summary>
+  <summary><b><code>colord(input)</code></b></summary>
 
-Pull requests and stars are always welcome. For bugs and feature requests, [please create an issue](../../issues/new).
+Parses the given input and creates a new Colord instance. String parsing strictly conforms to [CSS Color Level Specifications](https://www.w3.org/TR/css-color-4/#color-type).
+
+```js
+import { colord } from "colord";
+
+// String input examples
+colord("#FFF");
+colord("#ffffff");
+colord("#ffffffff");
+colord("rgb(255, 255, 255)");
+colord("rgba(255, 255, 255, 0.5)");
+colord("rgba(100% 100% 100% / 50%)");
+colord("hsl(90, 100%, 100%)");
+colord("hsla(90, 100%, 100%, 0.5)");
+colord("hsla(90deg 100% 100% / 50%)");
+colord("tomato"); // requires "names" plugin
+
+// Object input examples
+colord({ r: 255, g: 255, b: 255 });
+colord({ r: 255, g: 255, b: 255, a: 1 });
+colord({ h: 360, s: 100, l: 100 });
+colord({ h: 360, s: 100, l: 100, a: 1 });
+colord({ h: 360, s: 100, v: 100 });
+colord({ h: 360, s: 100, v: 100, a: 1 });
+```
+
+Check out the ["Plugins"](#plugins) section for more input format examples.
 
 </details>
 
 <details>
-<summary><strong>Running Tests</strong></summary>
+  <summary><b><code>getFormat(input)</code></b></summary>
 
-Running and reviewing unit tests is a great way to get familiarized with a library and its API. You can install dependencies and run tests with the following command:
+Returns a color model name for the input passed to the function. Uses the same parsing system as `colord` function.
 
-```sh
-$ npm install && npm test
+```js
+import { getFormat } from "colord";
+
+getFormat("#aabbcc"); // "hex"
+getFormat({ r: 13, g: 237, b: 162, a: 0.5 }); // "rgb"
+getFormat("hsl(180deg, 50%, 50%)"); // "hsl"
+getFormat("WUT?"); // undefined
+```
+
+</details>
+
+### Color conversion
+
+<details>
+  <summary><b><code>.toHex()</code></b></summary>
+
+Returns the [hexadecimal representation](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#rgb_colors) of a color. When the alpha channel value of the color is less than 1, it outputs `#rrggbbaa` format instead of `#rrggbb`.
+
+```js
+colord("rgb(0, 255, 0)").toHex(); // "#00ff00"
+colord({ h: 300, s: 100, l: 50 }).toHex(); // "#ff00ff"
+colord({ r: 255, g: 255, b: 255, a: 0 }).toHex(); // "#ffffff00"
 ```
 
 </details>
 
 <details>
-<summary><strong>Building docs</strong></summary>
+  <summary><b><code>.toRgb()</code></b></summary>
 
-_(This project's readme.md is generated by [verb](https://github.com/verbose/verb-generate-readme), please don't edit the readme directly. Any changes to the readme must be made in the [.verb.md](.verb.md) readme template.)_
-
-To generate the readme, run the following command:
-
-```sh
-$ npm install -g verbose/verb#dev verb-generate-readme && verb
+```js
+colord("#ff0000").toRgb(); // { r: 255, g: 0, b: 0, a: 1 }
+colord({ h: 180, s: 100, l: 50, a: 0.5 }).toRgb(); // { r: 0, g: 255, b: 255, a: 0.5 }
 ```
 
 </details>
 
-### Contributors
+<details>
+  <summary><b><code>.toRgbString()</code></b></summary>
 
-| **Commits** | **Contributor**                                               |
-| ----------- | ------------------------------------------------------------- |
-| 197         | [jonschlinkert](https://github.com/jonschlinkert)             |
-| 4           | [doowb](https://github.com/doowb)                             |
-| 1           | [es128](https://github.com/es128)                             |
-| 1           | [eush77](https://github.com/eush77)                           |
-| 1           | [hemanth](https://github.com/hemanth)                         |
-| 1           | [wtgtybhertgeghgtwtg](https://github.com/wtgtybhertgeghgtwtg) |
+```js
+colord("#ff0000").toRgbString(); // "rgb(255, 0, 0)"
+colord({ h: 180, s: 100, l: 50, a: 0.5 }).toRgbString(); // "rgba(0, 255, 255, 0.5)"
+```
 
-### Author
+</details>
 
-**Jon Schlinkert**
+<details>
+  <summary><b><code>.toHsl()</code></b></summary>
 
-- [GitHub Profile](https://github.com/jonschlinkert)
-- [Twitter Profile](https://twitter.com/jonschlinkert)
-- [LinkedIn Profile](https://linkedin.com/in/jonschlinkert)
+Converts a color to [HSL color space](https://en.wikipedia.org/wiki/HSL_and_HSV) and returns an object.
 
-### License
+```js
+colord("#ffff00").toHsl(); // { h: 60, s: 100, l: 50, a: 1 }
+colord("rgba(0, 0, 255, 0.5) ").toHsl(); // { h: 240, s: 100, l: 50, a: 0.5 }
+```
 
-Copyright © 2019, [Jon Schlinkert](https://github.com/jonschlinkert).
-Released under the [MIT License](LICENSE).
+</details>
 
----
+<details>
+  <summary><b><code>.toHslString()</code></b></summary>
 
-_This file was generated by [verb-generate-readme](https://github.com/verbose/verb-generate-readme), v0.8.0, on April 08, 2019._
+Converts a color to [HSL color space](https://en.wikipedia.org/wiki/HSL_and_HSV) and expresses it through the [functional notation](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#hsl_colors).
+
+```js
+colord("#ffff00").toHslString(); // "hsl(60, 100%, 50%)"
+colord("rgba(0, 0, 255, 0.5)").toHslString(); // "hsla(240, 100%, 50%, 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toHsv()</code></b></summary>
+
+Converts a color to [HSV color space](https://en.wikipedia.org/wiki/HSL_and_HSV) and returns an object.
+
+```js
+colord("#ffff00").toHsv(); // { h: 60, s: 100, v: 100, a: 1 }
+colord("rgba(0, 255, 255, 0.5) ").toHsv(); // { h: 180, s: 100, v: 100, a: 1 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toName(options?)</code></b> (<b>names</b> plugin)</summary>
+
+Converts a color to a [CSS keyword](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#color_keywords). Returns `undefined` if the color is not specified in the specs.
+
+```js
+import { colord, extend } from "colord";
+import namesPlugin from "colord/plugins/names";
+
+extend([namesPlugin]);
+
+colord("#ff6347").toName(); // "tomato"
+colord("#00ffff").toName(); // "cyan"
+colord("rgba(0, 0, 0, 0)").toName(); // "transparent"
+
+colord("#fe0000").toName(); // undefined (the color is not specified in CSS specs)
+colord("#fe0000").toName({ closest: true }); // "red" (closest color available)
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toCmyk()</code></b> (<b>cmyk</b> plugin)</summary>
+
+Converts a color to [CMYK](https://en.wikipedia.org/wiki/CMYK_color_model) color space.
+
+```js
+import { colord, extend } from "colord";
+import cmykPlugin from "colord/plugins/cmyk";
+
+extend([cmykPlugin]);
+
+colord("#ffffff").toCmyk(); // { c: 0, m: 0, y: 0, k: 0, a: 1 }
+colord("#555aaa").toCmyk(); // { c: 50, m: 47, y: 0, k: 33, a: 1 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toCmykString()</code></b> (<b>cmyk</b> plugin)</summary>
+
+Converts a color to color space.
+
+Converts a color to [CMYK](https://en.wikipedia.org/wiki/CMYK_color_model) color space and expresses it through the [functional notation](https://www.w3.org/TR/css-color-4/#device-cmyk)
+
+```js
+import { colord, extend } from "colord";
+import cmykPlugin from "colord/plugins/cmyk";
+
+extend([cmykPlugin]);
+
+colord("#99ffff").toCmykString(); // "device-cmyk(40% 0% 0% 0%)"
+colord("#00336680").toCmykString(); // "device-cmyk(100% 50% 0% 60% / 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toHwb()</code></b> (<b>hwb</b> plugin)</summary>
+
+Converts a color to [HWB (Hue-Whiteness-Blackness)](https://en.wikipedia.org/wiki/HWB_color_model) color space.
+
+```js
+import { colord, extend } from "colord";
+import hwbPlugin from "colord/plugins/hwb";
+
+extend([hwbPlugin]);
+
+colord("#ffffff").toHwb(); // { h: 0, w: 100, b: 0, a: 1 }
+colord("#555aaa").toHwb(); // { h: 236, w: 33, b: 33, a: 1 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toHwbString()</code></b> (<b>hwb</b> plugin)</summary>
+
+Converts a color to [HWB (Hue-Whiteness-Blackness)](https://en.wikipedia.org/wiki/HWB_color_model) color space and expresses it through the [functional notation](https://www.w3.org/TR/css-color-4/#the-hwb-notation).
+
+```js
+import { colord, extend } from "colord";
+import hwbPlugin from "colord/plugins/hwb";
+
+extend([hwbPlugin]);
+
+colord("#999966").toHwbString(); // "hwb(60 40% 40%)"
+colord("#99ffff").toHwbString(); // "hwb(180 60% 0%)"
+colord("#003366").alpha(0.5).toHwbString(); // "hwb(210 0% 60% / 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toLab()</code></b> (<b>lab</b> plugin)</summary>
+
+Converts a color to [CIE LAB](https://en.wikipedia.org/wiki/CIELAB_color_space) color space. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+```js
+import { colord, extend } from "colord";
+import labPlugin from "colord/plugins/lab";
+
+extend([labPlugin]);
+
+colord("#ffffff").toLab(); // { l: 100, a: 0, b: 0, alpha: 1 }
+colord("#33221180").toLab(); // { l: 14.89, a: 5.77, b: 14.41, alpha: 0.5 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toLch()</code></b> (<b>lch</b> plugin)</summary>
+
+Converts a color to [CIE LCH](https://lea.verou.me/2020/04/lch-colors-in-css-what-why-and-how/) color space. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+```js
+import { colord, extend } from "colord";
+import lchPlugin from "colord/plugins/lch";
+
+extend([lchPlugin]);
+
+colord("#ffffff").toLch(); // { l: 100, c: 0, h: 0, a: 1 }
+colord("#213b0b").toLch(); // { l: 21.85, c: 31.95, h: 127.77, a: 1 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toLchString()</code></b> (<b>lch</b> plugin)</summary>
+
+Converts a color to [CIE LCH](https://lea.verou.me/2020/04/lch-colors-in-css-what-why-and-how/) color space and expresses it through the [functional notation](https://www.w3.org/TR/css-color-4/#specifying-lab-lch).
+
+```js
+import { colord, extend } from "colord";
+import lchPlugin from "colord/plugins/lch";
+
+extend([lchPlugin]);
+
+colord("#ffffff").toLchString(); // "lch(100% 0 0)"
+colord("#213b0b").alpha(0.5).toLchString(); // "lch(21.85% 31.95 127.77 / 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.toXyz()</code></b> (<b>xyz</b> plugin)</summary>
+
+Converts a color to [CIE XYZ](https://www.sttmedia.com/colormodel-xyz) color space. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+```js
+import { colord, extend } from "colord";
+import xyzPlugin from "colord/plugins/xyz";
+
+extend([xyzPlugin]);
+
+colord("#ffffff").toXyz(); // { x: 95.047, y: 100, z: 108.883, a: 1 }
+```
+
+</details>
+
+### Color manipulation
+
+<details>
+  <summary><b><code>.alpha(value)</code></b></summary>
+
+Changes the alpha channel value and returns a new `Colord` instance.
+
+```js
+colord("rgb(0, 0, 0)").alpha(0.5).toRgbString(); // "rgba(0, 0, 0, 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.invert()</code></b></summary>
+
+Creates a new `Colord` instance containing an inverted (opposite) version of the color.
+
+```js
+colord("#ffffff").invert().toHex(); // "#000000"
+colord("#aabbcc").invert().toHex(); // "#554433"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.saturate(amount = 0.1)</code></b></summary>
+
+Increases the [HSL saturation](https://en.wikipedia.org/wiki/HSL_and_HSV) of a color by the given amount.
+
+```js
+colord("#bf4040").saturate(0.25).toHex(); // "#df2020"
+colord("hsl(0, 50%, 50%)").saturate(0.5).toHslString(); // "hsl(0, 100%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.desaturate(amount = 0.1)</code></b></summary>
+
+Decreases the [HSL saturation](https://en.wikipedia.org/wiki/HSL_and_HSV) of a color by the given amount.
+
+```js
+colord("#df2020").saturate(0.25).toHex(); // "#bf4040"
+colord("hsl(0, 100%, 50%)").saturate(0.5).toHslString(); // "hsl(0, 50%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.grayscale()</code></b></summary>
+
+Makes a gray color with the same lightness as a source color. Same as calling `desaturate(1)`.
+
+```js
+colord("#bf4040").grayscale().toHex(); // "#808080"
+colord("hsl(0, 100%, 50%)").grayscale().toHslString(); // "hsl(0, 0%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.lighten(amount = 0.1)</code></b></summary>
+
+Increases the [HSL lightness](https://en.wikipedia.org/wiki/HSL_and_HSV) of a color by the given amount.
+
+```js
+colord("#000000").lighten(0.5).toHex(); // "#808080"
+colord("#223344").lighten(0.3).toHex(); // "#5580aa"
+colord("hsl(0, 50%, 50%)").lighten(0.5).toHslString(); // "hsl(0, 50%, 100%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.darken(amount = 0.1)</code></b></summary>
+
+Decreases the [HSL lightness](https://en.wikipedia.org/wiki/HSL_and_HSV) of a color by the given amount.
+
+```js
+colord("#ffffff").darken(0.5).toHex(); // "#808080"
+colord("#5580aa").darken(0.3).toHex(); // "#223344"
+colord("hsl(0, 50%, 100%)").lighten(0.5).toHslString(); // "hsl(0, 50%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.hue(value)</code></b></summary>
+
+Changes the hue value and returns a new `Colord` instance.
+
+```js
+colord("hsl(90, 50%, 50%)").hue(180).toHslString(); // "hsl(180, 50%, 50%)"
+colord("hsl(90, 50%, 50%)").hue(370).toHslString(); // "hsl(10, 50%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.rotate(amount = 15)</code></b></summary>
+
+Increases the [HSL](https://en.wikipedia.org/wiki/HSL_and_HSV) hue value of a color by the given amount.
+
+```js
+colord("hsl(90, 50%, 50%)").rotate(90).toHslString(); // "hsl(180, 50%, 50%)"
+colord("hsl(90, 50%, 50%)").rotate(-180).toHslString(); // "hsl(270, 50%, 50%)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.mix(color2, ratio = 0.5)</code></b> (<b>mix</b> plugin)</summary>
+
+Produces a mixture of two colors and returns the result of mixing them (new Colord instance).
+
+In contrast to other libraries that perform RGB values mixing, Colord mixes colors through [LAB color space](https://en.wikipedia.org/wiki/CIELAB_color_space). This approach produces better results and doesn't have the drawbacks the legacy way has.
+
+→ [Online demo](https://3cg7o.csb.app/)
+
+```js
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
+
+extend([mixPlugin]);
+
+colord("#ffffff").mix("#000000").toHex(); // "#777777"
+colord("#800080").mix("#dda0dd").toHex(); // "#af5cae"
+colord("#cd853f").mix("#eee8aa", 0.6).toHex(); // "#e3c07e"
+colord("#008080").mix("#808000", 0.35).toHex(); // "#50805d"
+```
+
+</details>
+
+<details>
+  <summary><b><code>.tints(count = 5)</code></b> (<b>mix</b> plugin)</summary>
+
+Provides functionality to generate [tints](https://en.wikipedia.org/wiki/Tints_and_shades) of a color. Returns an array of `Colord` instances, including the original color.
+
+```js
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
+
+extend([mixPlugin]);
+
+const color = colord("#ff0000");
+color.tints(3).map((c) => c.toHex()); // ["#ff0000", "#ff9f80", "#ffffff"];
+```
+
+</details>
+
+<details>
+  <summary><b><code>.shades(count = 5)</code></b> (<b>mix</b> plugin)</summary>
+
+Provides functionality to generate [shades](https://en.wikipedia.org/wiki/Tints_and_shades) of a color. Returns an array of `Colord` instances, including the original color.
+
+```js
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
+
+extend([mixPlugin]);
+
+const color = colord("#ff0000");
+color.shades(3).map((c) => c.toHex()); // ["#ff0000", "#7a1b0b", "#000000"];
+```
+
+</details>
+
+<details>
+  <summary><b><code>.tones(count = 5)</code></b> (<b>mix</b> plugin)</summary>
+
+Provides functionality to generate [tones](https://en.wikipedia.org/wiki/Tints_and_shades) of a color. Returns an array of `Colord` instances, including the original color.
+
+```js
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
+
+extend([mixPlugin]);
+
+const color = colord("#ff0000");
+color.tones(3).map((c) => c.toHex()); // ["#ff0000", "#c86147", "#808080"];
+```
+
+</details>
+
+<details>
+  <summary><b><code>.harmonies(type = "complementary")</code></b> (<b>harmonies</b> plugin)</summary>
+
+Provides functionality to generate [harmony colors](<https://en.wikipedia.org/wiki/Harmony_(color)>). Returns an array of `Colord` instances.
+
+```js
+import { colord, extend } from "colord";
+import harmoniesPlugin from "colord/plugins/harmonies";
+
+extend([harmoniesPlugin]);
+
+const color = colord("#ff0000");
+color.harmonies("analogous").map((c) => c.toHex()); // ["#ff0080", "#ff0000", "#ff8000"]
+color.harmonies("complementary").map((c) => c.toHex()); // ["#ff0000", "#00ffff"]
+color.harmonies("double-split-complementary").map((c) => c.toHex()); // ["#ff0080", "#ff0000", "#ff8000", "#00ff80", "#0080ff"]
+color.harmonies("rectangle").map((c) => c.toHex()); // ["#ff0000", "#ffff00", "#00ffff", "#0000ff"]
+color.harmonies("split-complementary").map((c) => c.toHex()); // ["#ff0000", "#00ff80", "#0080ff"]
+color.harmonies("tetradic").map((c) => c.toHex()); // ["#ff0000", "#80ff00", "#00ffff", "#8000ff"]
+color.harmonies("triadic").map((c) => c.toHex()); // ["#ff0000", "#00ff00", "#0000ff"]
+```
+
+</details>
+
+### Color analysis
+
+<details>
+  <summary><b><code>.isValid()</code></b></summary>
+
+Returns a boolean indicating whether or not an input has been parsed successfully.
+Note: If parsing is unsuccessful, Colord defaults to black (does not throws an error).
+
+```js
+colord("#ffffff").isValid(); // true
+colord("#wwuutt").isValid(); // false
+colord("abracadabra").isValid(); // false
+colord({ r: 0, g: 0, b: 0 }).isValid(); // true
+colord({ r: 0, g: 0, v: 0 }).isValid(); // false
+```
+
+</details>
+
+<details>
+  <summary><b><code>.isEqual(color2)</code></b></summary>
+
+Determines whether two values are the same color.
+
+```js
+colord("#000000").isEqual("rgb(0, 0, 0)"); // true
+colord("#000000").isEqual("rgb(255, 255, 255)"); // false
+```
+
+</details>
+
+<details>
+  <summary><b><code>.alpha()</code></b></summary>
+
+```js
+colord("#ffffff").alpha(); // 1
+colord("rgba(50, 100, 150, 0.5)").alpha(); // 0.5
+```
+
+</details>
+
+<details>
+  <summary><b><code>.hue()</code></b></summary>
+
+```js
+colord("hsl(90, 50%, 50%)").hue(); // 90
+colord("hsl(-10, 50%, 50%)").hue(); // 350
+```
+
+</details>
+
+<details>
+  <summary><b><code>.brightness()</code></b></summary>
+
+Returns the brightness of a color (from 0 to 1). The calculation logic is modified from [Web Content Accessibility Guidelines](https://www.w3.org/TR/AERT/#color-contrast).
+
+```js
+colord("#000000").brightness(); // 0
+colord("#808080").brightness(); // 0.5
+colord("#ffffff").brightness(); // 1
+```
+
+</details>
+
+<details>
+  <summary><b><code>.isLight()</code></b></summary>
+
+Same as calling `brightness() >= 0.5`.
+
+```js
+colord("#111111").isLight(); // false
+colord("#aabbcc").isLight(); // true
+colord("#ffffff").isLight(); // true
+```
+
+</details>
+
+<details>
+  <summary><b><code>.isDark()</code></b></summary>
+
+Same as calling `brightness() < 0.5`.
+
+```js
+colord("#111111").isDark(); // true
+colord("#aabbcc").isDark(); // false
+colord("#ffffff").isDark(); // false
+```
+
+</details>
+
+<details>
+  <summary><b><code>.luminance()</code></b> (<b>a11y</b> plugin)</summary>
+
+Returns the relative luminance of a color, normalized to 0 for darkest black and 1 for lightest white as defined by [WCAG 2.0](https://www.w3.org/TR/WCAG20/#relativeluminancedef).
+
+```js
+colord("#000000").luminance(); // 0
+colord("#808080").luminance(); // 0.22
+colord("#ccddee").luminance(); // 0.71
+colord("#ffffff").luminance(); // 1
+```
+
+</details>
+
+<details>
+  <summary><b><code>.contrast(color2 = "#FFF")</code></b> (<b>a11y</b> plugin)</summary>
+
+Calculates a contrast ratio for a color pair. This luminance difference is expressed as a ratio ranging from 1 (e.g. white on white) to 21 (e.g., black on a white). [WCAG Accessibility Level AA requires](https://webaim.org/articles/contrast/) a ratio of at least 4.5 for normal text and 3 for large text.
+
+```js
+colord("#000000").contrast(); // 21 (black on white)
+colord("#ffffff").contrast("#000000"); // 21 (white on black)
+colord("#777777").contrast(); // 4.47 (gray on white)
+colord("#ff0000").contrast(); // 3.99 (red on white)
+colord("#0000ff").contrast("#ff000"); // 2.14 (blue on red)
+```
+
+</details>
+
+<details>
+  <summary><b><code>.isReadable(color2 = "#FFF", options?)</code></b> (<b>a11y</b> plugin)</summary>
+
+Checks that a background and text color pair is readable according to [WCAG 2.0 Contrast and Color Requirements](https://webaim.org/articles/contrast/).
+
+```js
+colord("#000000").isReadable(); // true (normal black text on white bg conforms to WCAG AA)
+colord("#777777").isReadable(); // false (normal gray text on white bg conforms to WCAG AA)
+colord("#ffffff").isReadable("#000000"); // true (normal white text on black bg conforms to WCAG AA)
+colord("#e60000").isReadable("#ffff47"); // true (normal red text on yellow bg conforms to WCAG AA)
+colord("#e60000").isReadable("#ffff47", { level: "AAA" }); // false (normal red text on yellow bg does not conform to WCAG AAA)
+colord("#e60000").isReadable("#ffff47", { level: "AAA", size: "large" }); // true (large red text on yellow bg conforms to WCAG AAA)
+```
+
+</details>
+
+<details>
+  <summary><b><code>.delta(color2 = "#FFF")</code></b> (<b>lab</b> plugin)</summary>
+
+Calculates the perceived color difference between two colors.
+The difference calculated according to [Delta E2000](https://en.wikipedia.org/wiki/Color_difference#CIEDE2000).
+The return value is `0` if the colors are equal, `1` if they are entirely different.
+
+```js
+colord("#3296fa").delta("#197dc8"); // 0.099
+colord("#faf0c8").delta("#ffffff"); // 0.148
+colord("#afafaf").delta("#b4b4b4"); // 0.014
+colord("#000000").delta("#ffffff"); // 1
+```
+
+</details>
+
+### Color utilities
+
+<details>
+  <summary><b><code>random()</code></b></summary>
+
+Returns a new Colord instance with a random color value inside.
+
+```js
+import { random } from "colord";
+
+random().toHex(); // "#01c8ec"
+random().alpha(0.5).toRgb(); // { r: 13, g: 237, b: 162, a: 0.5 }
+```
+
+</details>
+
+<details>
+  <summary><b><code>.minify(options?)</code></b></summary>
+
+Converts a color to its shortest string representation.
+
+```js
+import { colord, extend } from "colord";
+import minifyPlugin from "colord/plugins/minify";
+
+extend([minifyPlugin]);
+
+colord("black").minify(); // "#000"
+colord("#112233").minify(); // "#123"
+colord("darkgray").minify(); // "#a9a9a9"
+colord("rgba(170,170,170,0.4)").minify(); // "hsla(0,0%,67%,.4)"
+colord("rgba(170,170,170,0.4)").minify({ alphaHex: true }); // "#aaa6"
+```
+
+| Option        | Default | Description                                                  |
+| ------------- | ------- | ------------------------------------------------------------ |
+| `hex`         | `true`  | Enable `#rrggbb` and `#rgb` notations                        |
+| `alphaHex`    | `false` | Enable `#rrggbbaa` and `#rgba` notations                     |
+| `rgb`         | `true`  | Enable `rgb()` and `rgba()` functional notations             |
+| `hsl`         | `true`  | Enable `hsl()` and `hsla()` functional notations             |
+| `name`        | `false` | Enable CSS color keywords. Requires `names` plugin installed |
+| `transparent` | `false` | Enable `"transparent"` color keyword                         |
+
+</details>
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Plugins
+
+**Colord** has a built-in plugin system that allows new features and functionality to be easily added.
+
+<details>
+  <summary><b><code>a11y</code> (Accessibility)</b> <i>0.38 KB</i></summary>
+
+Adds accessibility and color contrast utilities working according to [Web Content Accessibility Guidelines 2.0](https://www.w3.org/TR/WCAG20/).
+
+```js
+import { colord, extend } from "colord";
+import a11yPlugin from "colord/plugins/a11y";
+
+extend([a11yPlugin]);
+
+colord("#000000").luminance(); // 0
+colord("#ccddee").luminance(); // 0.71
+colord("#ffffff").luminance(); // 1
+
+colord("#000000").contrast(); // 21 (black on white)
+colord("#ffffff").contrast("#000000"); // 21 (white on black)
+colord("#0000ff").contrast("#ff000"); // 2.14 (blue on red)
+
+colord("#000000").isReadable(); // true (black on white)
+colord("#ffffff").isReadable("#000000"); // true (white on black)
+colord("#777777").isReadable(); // false (gray on white)
+colord("#e60000").isReadable("#ffff47"); // true (normal red text on yellow bg conforms to WCAG AA)
+colord("#e60000").isReadable("#ffff47", { level: "AAA" }); // false (normal red text on yellow bg does not conform to WCAG AAA)
+colord("#e60000").isReadable("#ffff47", { level: "AAA", size: "large" }); // true (large red text on yellow bg conforms to WCAG AAA)
+```
+
+</details>
+
+<details>
+  <summary><b><code>cmyk</code> (CMYK color space)</b> <i>0.6 KB</i></summary>
+
+Adds support of [CMYK](https://www.sttmedia.com/colormodel-cmyk) color model.
+
+```js
+import { colord, extend } from "colord";
+import cmykPlugin from "colord/plugins/cmyk";
+
+extend([cmykPlugin]);
+
+colord("#ffffff").toCmyk(); // { c: 0, m: 0, y: 0, k: 0, a: 1 }
+colord("#999966").toCmykString(); // "device-cmyk(0% 0% 33% 40%)"
+colord({ c: 0, m: 0, y: 0, k: 100, a: 1 }).toHex(); // "#000000"
+colord("device-cmyk(0% 61% 72% 0% / 50%)").toHex(); // "#ff634780"
+```
+
+</details>
+
+<details>
+  <summary><b><code>harmonies</code> (Color harmonies)</b> <i>0.15 KB</i></summary>
+
+Provides functionality to generate [harmony colors](<https://en.wikipedia.org/wiki/Harmony_(color)>).
+
+```js
+import { colord, extend } from "colord";
+import harmonies from "colord/plugins/harmonies";
+
+extend([harmonies]);
+
+const color = colord("#ff0000");
+color.harmonies("analogous").map((c) => c.toHex()); // ["#ff0080", "#ff0000", "#ff8000"]
+color.harmonies("complementary").map((c) => c.toHex()); // ["#ff0000", "#00ffff"]
+color.harmonies("double-split-complementary").map((c) => c.toHex()); // ["#ff0080", "#ff0000", "#ff8000", "#00ff80", "#0080ff"]
+color.harmonies("rectangle").map((c) => c.toHex()); // ["#ff0000", "#ffff00", "#00ffff", "#0000ff"]
+color.harmonies("split-complementary").map((c) => c.toHex()); // ["#ff0000", "#00ff80", "#0080ff"]
+color.harmonies("tetradic").map((c) => c.toHex()); // ["#ff0000", "#80ff00", "#00ffff", "#8000ff"]
+color.harmonies("triadic").map((c) => c.toHex()); // ["#ff0000", "#00ff00", "#0000ff"]
+```
+
+</details>
+
+<details>
+  <summary><b><code>hwb</code> (HWB color model)</b> <i>0.8 KB</i></summary>
+
+Adds support of [Hue-Whiteness-Blackness](https://en.wikipedia.org/wiki/HWB_color_model) color model.
+
+```js
+import { colord, extend } from "colord";
+import hwbPlugin from "colord/plugins/hwb";
+
+extend([hwbPlugin]);
+
+colord("#999966").toHwb(); // { h: 60, w: 40, b: 40, a: 1 }
+colord("#003366").toHwbString(); // "hwb(210 0% 60%)"
+
+colord({ h: 60, w: 40, b: 40 }).toHex(); // "#999966"
+colord("hwb(210 0% 60% / 50%)").toHex(); // "#00336680"
+```
+
+</details>
+
+<details>
+  <summary><b><code>lab</code> (CIE LAB color space)</b> <i>1.4 KB</i></summary>
+
+Adds support of [CIE LAB](https://en.wikipedia.org/wiki/CIELAB_color_space) color model. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+Also plugin provides `.delta` method for [perceived color difference calculations](https://en.wikipedia.org/wiki/Color_difference#CIEDE2000).
+
+```js
+import { colord, extend } from "colord";
+import labPlugin from "colord/plugins/lab";
+
+extend([labPlugin]);
+
+colord({ l: 53.24, a: 80.09, b: 67.2 }).toHex(); // "#ff0000"
+colord("#ffffff").toLab(); // { l: 100, a: 0, b: 0, alpha: 1 }
+
+colord("#afafaf").delta("#b4b4b4"); // 0.014
+colord("#000000").delta("#ffffff"); // 1
+```
+
+</details>
+
+<details>
+  <summary><b><code>lch</code> (CIE LCH color space)</b> <i>1.3 KB</i></summary>
+
+Adds support of [CIE LCH](https://lea.verou.me/2020/04/lch-colors-in-css-what-why-and-how/) color space. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+```js
+import { colord, extend } from "colord";
+import lchPlugin from "colord/plugins/lch";
+
+extend([lchPlugin]);
+
+colord({ l: 100, c: 0, h: 0 }).toHex(); // "#ffffff"
+colord("lch(48.25% 30.07 196.38)").toHex(); // "#008080"
+
+colord("#646464").toLch(); // { l: 42.37, c: 0, h: 0, a: 1 }
+colord("#646464").alpha(0.5).toLchString(); // "lch(42.37% 0 0 / 0.5)"
+```
+
+</details>
+
+<details>
+  <summary><b><code>minify</code> (Color string minification)</b> <i>0.5 KB</i></summary>
+
+A plugin adding color string minification utilities.
+
+```js
+import { colord, extend } from "colord";
+import minifyPlugin from "colord/plugins/minify";
+
+extend([minifyPlugin]);
+
+colord("black").minify(); // "#000"
+colord("#112233").minify(); // "#123"
+colord("darkgray").minify(); // "#a9a9a9"
+colord("rgba(170,170,170,0.4)").minify(); // "hsla(0,0%,67%,.4)"
+colord("rgba(170,170,170,0.4)").minify({ alphaHex: true }); // "#aaa6"
+```
+
+</details>
+
+<details>
+  <summary><b><code>mix</code> (Color mixing)</b> <i>0.96 KB</i></summary>
+
+A plugin adding color mixing utilities.
+
+In contrast to other libraries that perform RGB values mixing, Colord mixes colors through [LAB color space](https://en.wikipedia.org/wiki/CIELAB_color_space). This approach produces better results and doesn't have the drawbacks the legacy way has.
+
+→ [Online demo](https://3cg7o.csb.app/)
+
+```js
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
+
+extend([mixPlugin]);
+
+colord("#ffffff").mix("#000000").toHex(); // "#777777"
+colord("#800080").mix("#dda0dd").toHex(); // "#af5cae"
+colord("#cd853f").mix("#eee8aa", 0.6).toHex(); // "#e3c07e"
+colord("#008080").mix("#808000", 0.35).toHex(); // "#50805d"
+```
+
+Also, the plugin provides special mixtures such as [tints, shades, and tones](https://en.wikipedia.org/wiki/Tints_and_shades):
+
+<div align="center">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Tint-tone-shade.svg/320px-Tint-tone-shade.svg.png" alt="tints, shades, and tones mixtures" />
+</div>
+
+```js
+const color = colord("#ff0000");
+color.tints(3).map((c) => c.toHex()); // ["#ff0000", "#ff9f80", "#ffffff"];
+color.shades(3).map((c) => c.toHex()); // ["#ff0000", "#7a1b0b", "#000000"];
+color.tones(3).map((c) => c.toHex()); // ["#ff0000", "#c86147", "#808080"];
+```
+
+</details>
+
+<details>
+  <summary><b><code>names</code> (CSS color keywords)</b> <i>1.45 KB</i></summary>
+
+Provides options to convert a color into a [CSS color keyword](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#color_keywords) and vice versa.
+
+```js
+import { colord, extend } from "colord";
+import namesPlugin from "colord/plugins/names";
+
+extend([namesPlugin]);
+
+colord("tomato").toHex(); // "#ff6347"
+colord("#00ffff").toName(); // "cyan"
+colord("rgba(0, 0, 0, 0)").toName(); // "transparent"
+colord("#fe0000").toName(); // undefined (the color is not specified in CSS specs)
+colord("#fe0000").toName({ closest: true }); // "red" (closest color)
+```
+
+</details>
+
+<details>
+  <summary><b><code>xyz</code> (CIE XYZ color space)</b> <i>0.7 KB</i></summary>
+
+Adds support of [CIE XYZ](https://www.sttmedia.com/colormodel-xyz) color model. The conversion logic is ported from [CSS Color Module Level 4 Specification](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+```js
+import { colord, extend } from "colord";
+import xyzPlugin from "colord/plugins/xyz";
+
+extend([xyzPlugin]);
+
+colord("#ffffff").toXyz(); // { x: 95.047, y: 100, z: 108.883, a: 1 }
+colord({ x: 0, y: 0, z: 0 }).toHex(); // "#000000"
+```
+
+</details>
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Types
+
+**Colord** is written in strict TypeScript and ships with types in the library itself — no need for any other install. We provide everything you need in one tiny package.
+
+While not only typing its own functions and variables, **Colord** can also help you type yours. Depending on the color space you are using, you can also import and use the type that is associated with it.
+
+```ts
+import { RgbColor, RgbaColor, HslColor, HslaColor, HsvColor, HsvaColor } from "colord";
+
+const foo: HslColor = { h: 0, s: 0, l: 0 };
+const bar: RgbColor = { r: 0, g: 0, v: 0 }; // ERROR
+```
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Projects using Colord
+
+- [cssnano](https://github.com/cssnano/cssnano) — the most popular CSS minification tool
+- [Resume.io](https://resume.io/) — online resume builder with over 12,000,000 users worldwide
+- [Leva](https://github.com/pmndrs/leva) — open source extensible GUI panel made for React
+- [Qui Max](https://github.com/Qvant-lab/qui-max) — Vue.js design system and component library
+- and [thousands more](https://github.com/omgovich/colord/network/dependents)...
+
+<div><img src="assets/divider.png" width="838" alt="---" /></div>
+
+## Roadmap
+
+- [x] Parse and convert Hex, RGB(A), HSL(A), HSV(A)
+- [x] Saturate, desaturate, grayscale
+- [x] Trim an input value
+- [x] Clamp input numbers to resolve edge cases (e.g. `rgb(256, -1, 999, 2)`)
+- [x] `brightness`, `isDark`, `isLight`
+- [x] Set and get `alpha`
+- [x] Plugin API
+- [x] 4 and 8 digit Hex
+- [x] `lighten`, `darken`
+- [x] `invert`
+- [x] CSS color names (via plugin)
+- [x] A11y and contrast utils (via plugin)
+- [x] XYZ color space (via plugin)
+- [x] [HWB](https://drafts.csswg.org/css-color/#the-hwb-notation) color space (via plugin)
+- [x] [LAB](https://www.w3.org/TR/css-color-4/#resolving-lab-lch-values) color space (via plugin)
+- [x] [LCH](https://lea.verou.me/2020/04/lch-colors-in-css-what-why-and-how/) color space (via plugin)
+- [x] Mix colors (via plugin)
+- [x] CMYK color space (via plugin)
