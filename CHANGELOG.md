@@ -1,6 +1,6 @@
 # Release history
 
-All notable changes to this project will be documented in this file.
+**All notable changes to this project will be documented in this file.**
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
@@ -32,129 +32,105 @@ Changelog entries are classified using the following labels _(from [keep-a-chang
 
 </details>
 
-## [6.0.3] - 2020-01-16
+## 2.3.1 (2022-01-02)
 
-- Merge pull request #31 for issue #30
+### Fixed
 
-## [6.0.0] - 2017-10-13
+* Fixes bug when a pattern containing an expression after the closing parenthesis (`/!(*.d).{ts,tsx}`) was incorrectly converted to regexp ([9f241ef](https://github.com/micromatch/picomatch/commit/9f241ef)).
 
-- refactor code to be more performant
-- refactor benchmarks
+### Changed
 
-## [5.1.0] - 2017-10-13
+* Some documentation improvements ([f81d236](https://github.com/micromatch/picomatch/commit/f81d236), [421e0e7](https://github.com/micromatch/picomatch/commit/421e0e7)).
 
-**Added**
+## 2.3.0 (2021-05-21)
 
-- Merge pull request #15 from aretecode/patch-1
-- adds support and tests for string & array iterators
+### Fixed
 
-**Changed**
+* Fixes bug where file names with two dots were not being matched consistently with negation extglobs containing a star ([56083ef](https://github.com/micromatch/picomatch/commit/56083ef))
 
-- updates benchmarks
+## 2.2.3 (2021-04-10)
 
-## [5.0.2] - 2017-08-02
+### Fixed
 
-- Merge pull request #14 from struct78/master
-- Added `undefined` check
+* Do not skip pattern seperator for square brackets ([fb08a30](https://github.com/micromatch/picomatch/commit/fb08a30)).
+* Set negatedExtGlob also if it does not span the whole pattern ([032e3f5](https://github.com/micromatch/picomatch/commit/032e3f5)).
 
-## [5.0.0] - 2017-06-21
+## 2.2.2 (2020-03-21)
 
-- Merge pull request #12 from aretecode/iterator
-- Set Iterator + Map Iterator
-- streamline `isbuffer`, minor edits
+### Fixed
 
-## [4.0.0] - 2017-05-19
+* Correctly handle parts of the pattern after parentheses in the `scan` method ([e15b920](https://github.com/micromatch/picomatch/commit/e15b920)).
 
-- Merge pull request #8 from tunnckoCore/master
-- update deps
+## 2.2.1 (2020-01-04)
 
-## [3.2.2] - 2017-05-16
+* Fixes [#49](https://github.com/micromatch/picomatch/issues/49), so that braces with no sets or ranges are now propertly treated as literals.
 
-- fix version
+## 2.2.0 (2020-01-04)
 
-## [3.2.1] - 2017-05-16
+* Disable fastpaths mode for the parse method ([5b8d33f](https://github.com/micromatch/picomatch/commit/5b8d33f))
+* Add `tokens`, `slashes`, and `parts` to the object returned by `picomatch.scan()`.
 
-- add browserify
+## 2.1.0 (2019-10-31)
 
-## [3.2.0] - 2017-04-25
+* add benchmarks for scan ([4793b92](https://github.com/micromatch/picomatch/commit/4793b92))
+* Add eslint object-curly-spacing rule ([707c650](https://github.com/micromatch/picomatch/commit/707c650))
+* Add prefer-const eslint rule ([5c7501c](https://github.com/micromatch/picomatch/commit/5c7501c))
+* Add support for nonegate in scan API ([275c9b9](https://github.com/micromatch/picomatch/commit/275c9b9))
+* Change lets to consts. Move root import up. ([4840625](https://github.com/micromatch/picomatch/commit/4840625))
+* closes https://github.com/micromatch/picomatch/issues/21 ([766bcb0](https://github.com/micromatch/picomatch/commit/766bcb0))
+* Fix "Extglobs" table in readme ([eb19da8](https://github.com/micromatch/picomatch/commit/eb19da8))
+* fixes https://github.com/micromatch/picomatch/issues/20 ([9caca07](https://github.com/micromatch/picomatch/commit/9caca07))
+* fixes https://github.com/micromatch/picomatch/issues/26 ([fa58f45](https://github.com/micromatch/picomatch/commit/fa58f45))
+* Lint test ([d433a34](https://github.com/micromatch/picomatch/commit/d433a34))
+* lint unit tests ([0159b55](https://github.com/micromatch/picomatch/commit/0159b55))
+* Make scan work with noext ([6c02e03](https://github.com/micromatch/picomatch/commit/6c02e03))
+* minor linting ([c2a2b87](https://github.com/micromatch/picomatch/commit/c2a2b87))
+* minor parser improvements ([197671d](https://github.com/micromatch/picomatch/commit/197671d))
+* remove eslint since it... ([07876fa](https://github.com/micromatch/picomatch/commit/07876fa))
+* remove funding file ([8ebe96d](https://github.com/micromatch/picomatch/commit/8ebe96d))
+* Remove unused funks ([cbc6d54](https://github.com/micromatch/picomatch/commit/cbc6d54))
+* Run eslint during pretest, fix existing eslint findings ([0682367](https://github.com/micromatch/picomatch/commit/0682367))
+* support `noparen` in scan ([3d37569](https://github.com/micromatch/picomatch/commit/3d37569))
+* update changelog ([7b34e77](https://github.com/micromatch/picomatch/commit/7b34e77))
+* update travis ([777f038](https://github.com/micromatch/picomatch/commit/777f038))
+* Use eslint-disable-next-line instead of eslint-disable ([4e7c1fd](https://github.com/micromatch/picomatch/commit/4e7c1fd))
 
-- Merge pull request #10 from ksheedlo/unrequire-buffer
-- add `promise` support and tests
-- Remove unnecessary `Buffer` check
+## 2.0.7 (2019-05-14)
 
-## [3.1.0] - 2016-12-07
+* 2.0.7 ([9eb9a71](https://github.com/micromatch/picomatch/commit/9eb9a71))
+* supports lookbehinds ([1f63f7e](https://github.com/micromatch/picomatch/commit/1f63f7e))
+* update .verb.md file with typo change ([2741279](https://github.com/micromatch/picomatch/commit/2741279))
+* fix: typo in README ([0753e44](https://github.com/micromatch/picomatch/commit/0753e44))
 
-- Merge pull request #7 from laggingreflex/err
-- add support for `error` and tests
-- run update
+## 2.0.4 (2019-04-10)
 
-## [3.0.4] - 2016-07-29
+### Fixed
 
-- move tests
-- run update
+- Readme link [fixed](https://github.com/micromatch/picomatch/pull/13/commits/a96ab3aa2b11b6861c23289964613d85563b05df) by @danez.
+- `options.capture` now works as expected when fastpaths are enabled. See https://github.com/micromatch/picomatch/pull/12/commits/26aefd71f1cfaf95c37f1c1fcab68a693b037304. Thanks to @DrPizza.
 
-## [3.0.3] - 2016-05-03
+## 2.0.0 (2019-04-10)
 
-- fix prepublish script
-- remove unused dep
+### Added
 
-## [3.0.0] - 2015-11-17
+- Adds support for `options.onIgnore`. See the readme for details
+- Adds support for `options.onResult`. See the readme for details
 
-- add typed array support
-- Merge pull request #5 from miguelmota/typed-arrays
-- adds new tests
+### Breaking changes
 
-## [2.0.1] - 2015-08-21
+- The unixify option was renamed to `windows`
+- caching and all related options and methods have been removed
 
-- use `is-buffer` module
+## 1.0.0 (2018-11-05)
 
-## [2.0.0] - 2015-05-31
+- adds `.onMatch` option
+- improvements to `.scan` method
+- numerous improvements and optimizations for matching and parsing
+- better windows path handling
 
-- Create fallback for `Array.isArray` if used as a browser package
-- Merge pull request #2 from dtothefp/patch-1
-- Merge pull request #3 from pdehaan/patch-1
-- Merge branch 'master' of https://github.com/chorks/kind-of into chorks-master
-- optimizations, mostly date and regex
+## 0.1.0 - 2017-04-13
 
-## [1.1.0] - 2015-02-09
+First release.
 
-- adds `buffer` support
-- adds tests for `buffer`
 
-## [1.0.0] - 2015-01-19
-
-- update benchmarks
-- optimizations based on benchmarks
-
-## [0.1.2] - 2014-10-26
-
-- return `typeof` value if it's not an object. very slight speed improvement
-- use `.slice`
-- adds benchmarks
-
-## [0.1.0] - 2014-9-26
-
-- first commit
-
-[6.0.0]: https://github.com/jonschlinkert/kind-of/compare/5.1.0...6.0.0
-[5.1.0]: https://github.com/jonschlinkert/kind-of/compare/5.0.2...5.1.0
-[5.0.2]: https://github.com/jonschlinkert/kind-of/compare/5.0.1...5.0.2
-[5.0.1]: https://github.com/jonschlinkert/kind-of/compare/5.0.0...5.0.1
-[5.0.0]: https://github.com/jonschlinkert/kind-of/compare/4.0.0...5.0.0
-[4.0.0]: https://github.com/jonschlinkert/kind-of/compare/3.2.2...4.0.0
-[3.2.2]: https://github.com/jonschlinkert/kind-of/compare/3.2.1...3.2.2
-[3.2.1]: https://github.com/jonschlinkert/kind-of/compare/3.2.0...3.2.1
-[3.2.0]: https://github.com/jonschlinkert/kind-of/compare/3.1.0...3.2.0
-[3.1.0]: https://github.com/jonschlinkert/kind-of/compare/3.0.4...3.1.0
-[3.0.4]: https://github.com/jonschlinkert/kind-of/compare/3.0.3...3.0.4
-[3.0.3]: https://github.com/jonschlinkert/kind-of/compare/3.0.0...3.0.3
-[3.0.0]: https://github.com/jonschlinkert/kind-of/compare/2.0.1...3.0.0
-[2.0.1]: https://github.com/jonschlinkert/kind-of/compare/2.0.0...2.0.1
-[2.0.0]: https://github.com/jonschlinkert/kind-of/compare/1.1.0...2.0.0
-[1.1.0]: https://github.com/jonschlinkert/kind-of/compare/1.0.0...1.1.0
-[1.0.0]: https://github.com/jonschlinkert/kind-of/compare/0.1.2...1.0.0
-[0.1.2]: https://github.com/jonschlinkert/kind-of/compare/0.1.0...0.1.2
-[0.1.0]: https://github.com/jonschlinkert/kind-of/commit/2fae09b0b19b1aadb558e9be39f0c3ef6034eb87
-
-[Unreleased]: https://github.com/jonschlinkert/kind-of/compare/0.1.2...HEAD
 [keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog

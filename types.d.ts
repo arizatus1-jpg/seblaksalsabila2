@@ -1,98 +1,51 @@
-/**
- * @public
- */
-export type Config = any;
-/**
- * @public
- */
-export type CosmiconfigResult = {
-    config: Config;
-    filepath: string;
-    isEmpty?: boolean;
-} | null;
-/**
- * @public
- */
-export type LoaderResult = Config | null;
-/**
- * @public
- */
-export type Loader = ((filepath: string, content: string) => Promise<LoaderResult>) | LoaderSync;
-/**
- * @public
- */
-export type LoaderSync = (filepath: string, content: string) => LoaderResult;
-/**
- * @public
- */
-export type Transform = ((CosmiconfigResult: CosmiconfigResult) => Promise<CosmiconfigResult>) | TransformSync;
-/**
- * @public
- */
-export type TransformSync = (CosmiconfigResult: CosmiconfigResult) => CosmiconfigResult;
-/**
- * @public
- */
-export type SearchStrategy = 'none' | 'project' | 'global';
-/**
- * @public
- */
-export interface CommonOptions {
-    packageProp?: string | Array<string>;
-    searchPlaces: Array<string>;
-    ignoreEmptySearchPlaces: boolean;
-    stopDir?: string;
-    cache: boolean;
-    mergeImportArrays: boolean;
-    mergeSearchPlaces: boolean;
-    searchStrategy: SearchStrategy;
+export type Formatter = (input: string | number | null | undefined) => string
+
+export interface Colors {
+	isColorSupported: boolean
+
+	reset: Formatter
+	bold: Formatter
+	dim: Formatter
+	italic: Formatter
+	underline: Formatter
+	inverse: Formatter
+	hidden: Formatter
+	strikethrough: Formatter
+
+	black: Formatter
+	red: Formatter
+	green: Formatter
+	yellow: Formatter
+	blue: Formatter
+	magenta: Formatter
+	cyan: Formatter
+	white: Formatter
+	gray: Formatter
+
+	bgBlack: Formatter
+	bgRed: Formatter
+	bgGreen: Formatter
+	bgYellow: Formatter
+	bgBlue: Formatter
+	bgMagenta: Formatter
+	bgCyan: Formatter
+	bgWhite: Formatter
+
+	blackBright: Formatter
+	redBright: Formatter
+	greenBright: Formatter
+	yellowBright: Formatter
+	blueBright: Formatter
+	magentaBright: Formatter
+	cyanBright: Formatter
+	whiteBright: Formatter
+
+	bgBlackBright: Formatter
+	bgRedBright: Formatter
+	bgGreenBright: Formatter
+	bgYellowBright: Formatter
+	bgBlueBright: Formatter
+	bgMagentaBright: Formatter
+	bgCyanBright: Formatter
+	bgWhiteBright: Formatter
 }
-/**
- * @public
- */
-export interface Options extends CommonOptions {
-    loaders: Loaders;
-    transform: Transform;
-}
-/**
- * @public
- */
-export interface OptionsSync extends CommonOptions {
-    loaders: LoadersSync;
-    transform: TransformSync;
-}
-/**
- * @public
- */
-export interface Loaders {
-    [key: string]: Loader;
-}
-/**
- * @public
- */
-export interface LoadersSync {
-    [key: string]: LoaderSync;
-}
-/**
- * @public
- */
-export interface PublicExplorerBase {
-    clearLoadCache: () => void;
-    clearSearchCache: () => void;
-    clearCaches: () => void;
-}
-/**
- * @public
- */
-export interface PublicExplorer extends PublicExplorerBase {
-    search: (searchFrom?: string) => Promise<CosmiconfigResult>;
-    load: (filepath: string) => Promise<CosmiconfigResult>;
-}
-/**
- * @public
- */
-export interface PublicExplorerSync extends PublicExplorerBase {
-    search: (searchFrom?: string) => CosmiconfigResult;
-    load: (filepath: string) => CosmiconfigResult;
-}
-//# sourceMappingURL=types.d.ts.map
