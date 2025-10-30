@@ -1,272 +1,152 @@
-# `@dual-bundle/import-meta-resolve`
+# ansi-styles [![Build Status](https://travis-ci.org/chalk/ansi-styles.svg?branch=master)](https://travis-ci.org/chalk/ansi-styles)
 
-A fork of [`import-meta-resolve`](https://github.com/wooorm/import-meta-resolve)
-with commonjs + ESM support at the same time, AKA dual package.
+> [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors_and_Styles) for styling strings in the terminal
 
-It will rebase and try to release in order to sync with the upstream every day,
-see [.github/workflows/rebase.yml](.github/workflows/rebase.yml) for details.
+You probably want the higher-level [chalk](https://github.com/chalk/chalk) module for styling your strings.
 
-## Installation
-
-```bash
-# npm
-npm install @dual-bundle/import-meta-resolve
-
-# yarn
-yarn add @dual-bundle/import-meta-resolve
-```
-
-***
-
-# import-meta-resolve
-
-[![Build][build-badge]][build]
-[![Coverage][coverage-badge]][coverage]
-[![Downloads][downloads-badge]][downloads]
-
-Resolve things like Node.js.
-
-## Contents
-
-* [What is this?](#what-is-this)
-* [When to use this?](#when-to-use-this)
-* [Install](#install)
-* [Use](#use)
-* [API](#api)
-  * [`resolve(specifier, parent)`](#resolvespecifier-parent)
-  * [`moduleResolve(specifier, parent, conditions, preserveSymlinks)`](#moduleresolvespecifier-parent-conditions-preservesymlinks)
-  * [`ErrnoException`](#errnoexception)
-* [Algorithm](#algorithm)
-* [Differences to Node](#differences-to-node)
-* [Types](#types)
-* [Compatibility](#compatibility)
-* [Contribute](#contribute)
-* [License](#license)
-
-## What is this?
-
-This package is a ponyfill for [`import.meta.resolve`][native-resolve].
-It supports everything you need to resolve files just like modern Node does:
-import maps, export maps, loading CJS and ESM projects, all of that!
-
-## When to use this?
-
-As of Node.js 20.0, `import.meta.resolve` is still behind an experimental flag.
-This package can be used to do what it does in Node 16–20.
+<img src="screenshot.svg" width="900">
 
 ## Install
 
-This package is [ESM only][esm].
-In Node.js (version 16+), install with [npm][]:
-
-```sh
-npm install import-meta-resolve
+```
+$ npm install ansi-styles
 ```
 
-## Use
+## Usage
 
 ```js
-import {resolve} from 'import-meta-resolve'
+const style = require('ansi-styles');
 
-// A file:
-console.log(resolve('./index.js', import.meta.url))
-//=> file:///Users/tilde/Projects/oss/import-meta-resolve/index.js
+console.log(`${style.green.open}Hello world!${style.green.close}`);
 
-// A CJS package:
-console.log(resolve('builtins', import.meta.url))
-//=> file:///Users/tilde/Projects/oss/import-meta-resolve/node_modules/builtins/index.js
 
-// A scoped CJS package:
-console.log(resolve('@eslint/eslintrc', import.meta.url))
-//=> file:///Users/tilde/Projects/oss/import-meta-resolve/node_modules/@eslint/eslintrc/lib/index.js
-
-// A package with an export map:
-console.log(resolve('micromark/lib/parse', import.meta.url))
-//=> file:///Users/tilde/Projects/oss/import-meta-resolve/node_modules/micromark/lib/parse.js
-
-// A node builtin:
-console.log(resolve('fs', import.meta.url))
-//=> node:fs
+// Color conversion between 16/256/truecolor
+// NOTE: If conversion goes to 16 colors or 256 colors, the original color
+//       may be degraded to fit that color palette. This means terminals
+//       that do not support 16 million colors will best-match the
+//       original color.
+console.log(style.bgColor.ansi.hsl(120, 80, 72) + 'Hello world!' + style.bgColor.close);
+console.log(style.color.ansi256.rgb(199, 20, 250) + 'Hello world!' + style.color.close);
+console.log(style.color.ansi16m.hex('#abcdef') + 'Hello world!' + style.color.close);
 ```
 
 ## API
 
-This package exports the identifiers [`moduleResolve`][moduleresolve] and
-[`resolve`][resolve].
-There is no default export.
+Each style has an `open` and `close` property.
 
-### `resolve(specifier, parent)`
+## Styles
 
-Match `import.meta.resolve` except that `parent` is required (you can pass
-`import.meta.url`).
+### Modifiers
 
-###### Parameters
+- `reset`
+- `bold`
+- `dim`
+- `italic` *(Not widely supported)*
+- `underline`
+- `inverse`
+- `hidden`
+- `strikethrough` *(Not widely supported)*
 
-* `specifier` (`string`)
-  — the module specifier to resolve relative to parent
-  (`/example.js`, `./example.js`, `../example.js`, `some-package`, `fs`, etc)
-* `parent` (`string`, example: `import.meta.url`)
-  — the absolute parent module URL to resolve from; you must pass
-  `import.meta.url` or something else
+### Colors
 
-###### Returns
+- `black`
+- `red`
+- `green`
+- `yellow`
+- `blue`
+- `magenta`
+- `cyan`
+- `white`
+- `blackBright` (alias: `gray`, `grey`)
+- `redBright`
+- `greenBright`
+- `yellowBright`
+- `blueBright`
+- `magentaBright`
+- `cyanBright`
+- `whiteBright`
 
-Full `file:`, `data:`, or `node:` URL (`string`) to the found thing
+### Background colors
 
-###### Throws
+- `bgBlack`
+- `bgRed`
+- `bgGreen`
+- `bgYellow`
+- `bgBlue`
+- `bgMagenta`
+- `bgCyan`
+- `bgWhite`
+- `bgBlackBright` (alias: `bgGray`, `bgGrey`)
+- `bgRedBright`
+- `bgGreenBright`
+- `bgYellowBright`
+- `bgBlueBright`
+- `bgMagentaBright`
+- `bgCyanBright`
+- `bgWhiteBright`
 
-Throws an [`ErrnoException`][errnoexception].
+## Advanced usage
 
-### `moduleResolve(specifier, parent, conditions, preserveSymlinks)`
+By default, you get a map of styles, but the styles are also available as groups. They are non-enumerable so they don't show up unless you access them explicitly. This makes it easier to expose only a subset in a higher-level module.
 
-The [“Resolver Algorithm Specification”][algo] as detailed in the Node docs
-(which is slightly lower-level than `resolve`).
+- `style.modifier`
+- `style.color`
+- `style.bgColor`
 
-###### Parameters
+###### Example
 
-* `specifier` (`string`)
-  — `/example.js`, `./example.js`, `../example.js`, `some-package`, `fs`, etc
-* `parent` (`URL`, example: `import.meta.url`)
-  — full URL (to a file) that `specifier` is resolved relative from
-* `conditions` (`Set<string>`, default: `new Set(['node', 'import'])`)
-  — conditions
-* `preserveSymlinks` (`boolean`, default: `false`)
-  — keep symlinks instead of resolving them
-
-###### Returns
-
-A URL object (`URL`) to the found thing.
-
-###### Throws
-
-Throws an [`ErrnoException`][errnoexception].
-
-### `ErrnoException`
-
-One of many different errors that occur when resolving (TypeScript type).
-
-###### Type
-
-```ts
-type ErrnoExceptionFields = Error & {
-  errnode?: number | undefined
-  code?: string | undefined
-  path?: string | undefined
-  syscall?: string | undefined
-  url?: string | undefined
-}
+```js
+console.log(style.color.green.open);
 ```
 
-The `code` field on errors is one of the following strings:
+Raw escape codes (i.e. without the CSI escape prefix `\u001B[` and render mode postfix `m`) are available under `style.codes`, which returns a `Map` with the open codes as keys and close codes as values.
 
-* `'ERR_INVALID_MODULE_SPECIFIER'`
-  — when `specifier` is invalid (example: `'#'`)
-* `'ERR_INVALID_PACKAGE_CONFIG'`
-  — when a `package.json` is invalid (example: invalid JSON)
-* `'ERR_INVALID_PACKAGE_TARGET'`
-  — when a `package.json` `exports` or `imports` is invalid (example: when it
-  does not start with `'./'`)
-* `'ERR_MODULE_NOT_FOUND'`
-  — when `specifier` cannot be found in `parent` (example: `'some-missing-package'`)
-* `'ERR_NETWORK_IMPORT_DISALLOWED'`
-  — thrown when trying to resolve a local file or builtin from a remote file
-  (`node:fs` relative to `'https://example.com'`)
-* `'ERR_PACKAGE_IMPORT_NOT_DEFINED'`
-  — when a local import is not defined in an import map (example: `'#local'`
-  when not defined)
-* `'ERR_PACKAGE_PATH_NOT_EXPORTED'`
-  — when an export is not defined in an export map (example: `'tape/index.js'`,
-  which is not in its export map)
-* `'ERR_UNSUPPORTED_DIR_IMPORT'`
-  — when attempting to import a directory (example: `'./lib/'`)
-* `'ERR_UNKNOWN_FILE_EXTENSION'`
-  — when somehow reading a file that has an unexpected extensions (`'./readme.md'`)
-* `'ERR_INVALID_ARG_VALUE'`
-  — when `conditions` is incorrect
+###### Example
 
-## Algorithm
+```js
+console.log(style.codes.get(36));
+//=> 39
+```
 
-The algorithm for `resolve` matches how Node handles `import.meta.resolve`, with
-a couple of differences.
+## [256 / 16 million (TrueColor) support](https://gist.github.com/XVilka/8346728)
 
-The algorithm for `moduleResolve` matches the [Resolver Algorithm
-Specification][algo] as detailed in the Node docs (which is sync and slightly
-lower-level than `resolve`).
+`ansi-styles` uses the [`color-convert`](https://github.com/Qix-/color-convert) package to allow for converting between various colors and ANSI escapes, with support for 256 and 16 million colors.
 
-## Differences to Node
+The following color spaces from `color-convert` are supported:
 
-* `parent` defaulting to `import.meta.url` cannot be ponyfilled: you have to
-  explicitly pass it
-* no support for loaders (that would mean implementing all of loaders)
-* no support for CLI flags:
-  `--conditions`,
-  `--experimental-default-type`,
-  `--experimental-json-modules`,
-  `--experimental-network-imports`,
-  `--experimental-policy`,
-  `--experimental-wasm-modules`,
-  `--input-type`,
-  `--no-addons`,
-  `--preserve-symlinks`, nor
-  `--preserve-symlinks-main`
-  work
-* no support for `WATCH_REPORT_DEPENDENCIES` env variable
-* no attempt is made to add a suggestion based on how things used to work in
-  CJS before to not-found errors
-* prototypal methods are not guarded: Node protects for example `String#slice`
-  or so from being tampered with, whereas this doesn’t
+- `rgb`
+- `hex`
+- `keyword`
+- `hsl`
+- `hsv`
+- `hwb`
+- `ansi`
+- `ansi256`
 
-## Types
+To use these, call the associated conversion function with the intended output, for example:
 
-This package is fully typed with [TypeScript][].
-It exports the additional type [`ErrnoException`][errnoexception].
+```js
+style.color.ansi.rgb(100, 200, 15); // RGB to 16 color ansi foreground code
+style.bgColor.ansi.rgb(100, 200, 15); // RGB to 16 color ansi background code
 
-## Compatibility
+style.color.ansi256.hsl(120, 100, 60); // HSL to 256 color ansi foreground code
+style.bgColor.ansi256.hsl(120, 100, 60); // HSL to 256 color ansi foreground code
 
-This package is at least compatible with all maintained versions of Node.js.
-As of now, that is Node.js 16 and later.
+style.color.ansi16m.hex('#C0FFEE'); // Hex (RGB) to 16 million color foreground code
+style.bgColor.ansi16m.hex('#C0FFEE'); // Hex (RGB) to 16 million color background code
+```
 
-## Contribute
+## Related
 
-Yes please!
-See [How to Contribute to Open Source][contribute].
+- [ansi-escapes](https://github.com/sindresorhus/ansi-escapes) - ANSI escape codes for manipulating the terminal
 
-## License
+## Maintainers
 
-[MIT][license] © [Titus Wormer][author] and Node.js contributors
+- [Sindre Sorhus](https://github.com/sindresorhus)
+- [Josh Junon](https://github.com/qix-)
 
-<!-- Definitions -->
+## For enterprise
 
-[algo]: https://nodejs.org/dist/latest-v14.x/docs/api/esm.html#esm_resolver_algorithm
+Available as part of the Tidelift Subscription.
 
-[author]: https://wooorm.com
-
-[build]: https://github.com/wooorm/import-meta-resolve/actions
-
-[build-badge]: https://github.com/wooorm/import-meta-resolve/workflows/main/badge.svg
-
-[contribute]: https://opensource.guide/how-to-contribute/
-
-[coverage]: https://codecov.io/github/wooorm/import-meta-resolve
-
-[coverage-badge]: https://img.shields.io/codecov/c/github/wooorm/import-meta-resolve.svg
-
-[downloads]: https://www.npmjs.com/package/import-meta-resolve
-
-[downloads-badge]: https://img.shields.io/npm/dm/import-meta-resolve.svg
-
-[errnoexception]: #errnoexception
-
-[esm]: https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c
-
-[license]: license
-
-[moduleresolve]: #moduleResolvespecifier-parent-conditions-preserveSymlinks
-
-[native-resolve]: https://nodejs.org/api/esm.html#esm_import_meta_resolve_specifier_parent
-
-[npm]: https://docs.npmjs.com/cli/install
-
-[resolve]: #resolvespecifier-parent
-
-[typescript]: https://www.typescriptlang.org
+The maintainers of `ansi-styles` and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/npm-ansi-styles?utm_source=npm-ansi-styles&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
