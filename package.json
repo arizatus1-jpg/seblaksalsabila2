@@ -1,88 +1,125 @@
 {
-  "name": "css-functions-list",
-  "version": "3.2.3",
-  "description": "List of standard and browser specific CSS functions.",
+  "name": "css-tree",
+  "version": "3.1.0",
+  "description": "A tool set for CSS: fast detailed parser (CSS → AST), walker (AST traversal), generator (AST → CSS) and lexer (validation and matching) based on specs and browser implementations",
+  "author": "Roman Dvornov <rdvornov@gmail.com> (https://github.com/lahmatiy)",
   "license": "MIT",
-  "author": "Ivan Nikolić <niksy5@gmail.com> (http://ivannikolic.com)",
-  "sideEffects": false,
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./esm/index.js",
-      "require": "./cjs/index.js"
-    },
-    "./index.json": {
-      "import": "./esm/index.json",
-      "require": "./cjs/index.json"
-    },
-    "./package.json": "./package.json"
-  },
-  "main": "cjs/index.js",
-  "module": "esm/index.js",
-  "types": "esm/index.d.ts",
-  "directories": {
-    "test": "test"
-  },
-  "files": [
-    "cjs/",
-    "esm/",
-    "CHANGELOG.md",
-    "LICENSE.md",
-    "README.md"
-  ],
-  "scripts": {
-    "generate-list": "node generate-list.js",
-    "release": "np --no-release-draft",
-    "version": "if [ $(git rev-parse --abbrev-ref HEAD) == 'master' ]; then sed -i '' '/\\[unreleased\\]:/d' CHANGELOG.md && version-changelog CHANGELOG.md && changelog-verify CHANGELOG.md && git add CHANGELOG.md; else echo; fi",
-    "postpublish": "GITHUB_TOKEN=$GITHUB_RELEASE_TOKEN github-release-from-changelog",
-    "lint": "eslint '{index,lib/**/*,test/**/*,generate-list}.js'",
-    "test": "mocha 'test/**/*.js'",
-    "test:watch": "npm test -- --watch",
-    "build": "rollup --config rollup.config.js",
-    "module-check": "node -e 'require(\"css-functions-list\");' && node --input-type=module -e 'import \"css-functions-list\";'",
-    "prepublishOnly": "npm run build",
-    "lint:types": "tsc",
-    "prerelease": "npm run lint && npm run lint:types && npm run build && npm run module-check"
-  },
-  "devDependencies": {
-    "@types/jsdom": "^16.2.13",
-    "@types/mocha": "^9.0.0",
-    "@types/node": "^16.3.0",
-    "@types/node-fetch": "^2.5.12",
-    "changelog-verify": "^1.1.2",
-    "cpy": "^8.1.2",
-    "eslint": "^8.5.0",
-    "eslint-config-nitpick": "^11.1.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "execa": "^5.1.1",
-    "github-release-from-changelog": "^2.1.1",
-    "husky": "^4.3.0",
-    "isomorphic-unfetch": "^3.1.0",
-    "jsdom": "^17.0.0",
-    "lint-staged": "^10.4.2",
-    "mocha": "^10.2.0",
-    "np": "^7.6.0",
-    "prettier": "^2.4.0",
-    "rollup": "^2.32.1",
-    "typescript": "^4.3.5",
-    "version-changelog": "^3.1.1",
-    "write-json-file": "^4.3.0"
-  },
-  "engines": {
-    "node": ">=12 || >=16"
-  },
+  "repository": "csstree/csstree",
   "keywords": [
     "css",
-    "functions",
-    "list"
+    "ast",
+    "tokenizer",
+    "parser",
+    "walker",
+    "lexer",
+    "generator",
+    "utils",
+    "syntax",
+    "validation"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/niksy/css-functions-list.git"
+  "type": "module",
+  "module": "./lib/index.js",
+  "main": "./cjs/index.cjs",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "require": "./cjs/index.cjs"
+    },
+    "./dist/*": "./dist/*.js",
+    "./package.json": "./package.json",
+    "./tokenizer": {
+      "import": "./lib/tokenizer/index.js",
+      "require": "./cjs/tokenizer/index.cjs"
+    },
+    "./parser": {
+      "import": "./lib/parser/index.js",
+      "require": "./cjs/parser/index.cjs"
+    },
+    "./selector-parser": {
+      "import": "./lib/parser/parse-selector.js",
+      "require": "./cjs/parser/parse-selector.cjs"
+    },
+    "./generator": {
+      "import": "./lib/generator/index.js",
+      "require": "./cjs/generator/index.cjs"
+    },
+    "./walker": {
+      "import": "./lib/walker/index.js",
+      "require": "./cjs/walker/index.cjs"
+    },
+    "./convertor": {
+      "import": "./lib/convertor/index.js",
+      "require": "./cjs/convertor/index.cjs"
+    },
+    "./lexer": {
+      "import": "./lib/lexer/index.js",
+      "require": "./cjs/lexer/index.cjs"
+    },
+    "./definition-syntax": {
+      "import": "./lib/definition-syntax/index.js",
+      "require": "./cjs/definition-syntax/index.cjs"
+    },
+    "./definition-syntax-data": {
+      "import": "./lib/data.js",
+      "require": "./cjs/data.cjs"
+    },
+    "./definition-syntax-data-patch": {
+      "import": "./lib/data-patch.js",
+      "require": "./cjs/data-patch.cjs"
+    },
+    "./utils": {
+      "import": "./lib/utils/index.js",
+      "require": "./cjs/utils/index.cjs"
+    }
   },
-  "bugs": {
-    "url": "https://github.com/niksy/css-functions-list/issues"
+  "browser": {
+    "./cjs/data.cjs": "./dist/data.cjs",
+    "./cjs/version.cjs": "./dist/version.cjs",
+    "./lib/data.js": "./dist/data.js",
+    "./lib/version.js": "./dist/version.js"
   },
-  "homepage": "https://github.com/niksy/css-functions-list#readme"
+  "unpkg": "dist/csstree.esm.js",
+  "jsdelivr": "dist/csstree.esm.js",
+  "scripts": {
+    "watch": "npm run build -- --watch",
+    "build": "npm run bundle && npm run esm-to-cjs --",
+    "build-and-test": "npm run build && npm run test:dist && npm run test:cjs",
+    "bundle": "node scripts/bundle",
+    "bundle-and-test": "npm run bundle && npm run test:dist",
+    "esm-to-cjs": "node scripts/esm-to-cjs.cjs",
+    "esm-to-cjs-and-test": "npm run esm-to-cjs && npm run test:cjs",
+    "lint": "eslint lib scripts && node scripts/review-syntax-patch --lint && node scripts/update-docs --lint",
+    "lint-and-test": "npm run lint && npm test",
+    "update:docs": "node scripts/update-docs",
+    "review:syntax-patch": "node scripts/review-syntax-patch",
+    "test": "mocha lib/__tests --require lib/__tests/helpers/setup.js --reporter progress",
+    "test:cjs": "mocha cjs/__tests --require lib/__tests/helpers/setup.js --reporter progress",
+    "test:dist": "mocha dist/__tests --reporter progress",
+    "coverage": "c8 --exclude lib/__tests --reporter=lcovonly npm test",
+    "prepublishOnly": "npm run lint-and-test && npm run build-and-test"
+  },
+  "dependencies": {
+    "mdn-data": "2.12.2",
+    "source-map-js": "^1.0.1"
+  },
+  "devDependencies": {
+    "c8": "^7.12.0",
+    "clap": "^2.0.1",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.4.1",
+    "json-to-ast": "^2.1.0",
+    "mocha": "^9.2.2",
+    "rollup": "^2.79.2"
+  },
+  "engines": {
+    "node": "^10 || ^12.20.0 || ^14.13.0 || >=15.0.0"
+  },
+  "files": [
+    "data",
+    "dist",
+    "cjs",
+    "!cjs/__tests",
+    "lib",
+    "!lib/__tests"
+  ]
 }
