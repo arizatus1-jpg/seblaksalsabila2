@@ -1,67 +1,98 @@
-export declare type RgbColor = {
-    r: number;
-    g: number;
-    b: number;
-};
-export declare type HslColor = {
-    h: number;
-    s: number;
-    l: number;
-};
-export declare type HsvColor = {
-    h: number;
-    s: number;
-    v: number;
-};
-export declare type HwbColor = {
-    h: number;
-    w: number;
-    b: number;
-};
-export interface XyzColor {
-    x: number;
-    y: number;
-    z: number;
+/**
+ * @public
+ */
+export type Config = any;
+/**
+ * @public
+ */
+export type CosmiconfigResult = {
+    config: Config;
+    filepath: string;
+    isEmpty?: boolean;
+} | null;
+/**
+ * @public
+ */
+export type LoaderResult = Config | null;
+/**
+ * @public
+ */
+export type Loader = ((filepath: string, content: string) => Promise<LoaderResult>) | LoaderSync;
+/**
+ * @public
+ */
+export type LoaderSync = (filepath: string, content: string) => LoaderResult;
+/**
+ * @public
+ */
+export type Transform = ((CosmiconfigResult: CosmiconfigResult) => Promise<CosmiconfigResult>) | TransformSync;
+/**
+ * @public
+ */
+export type TransformSync = (CosmiconfigResult: CosmiconfigResult) => CosmiconfigResult;
+/**
+ * @public
+ */
+export type SearchStrategy = 'none' | 'project' | 'global';
+/**
+ * @public
+ */
+export interface CommonOptions {
+    packageProp?: string | Array<string>;
+    searchPlaces: Array<string>;
+    ignoreEmptySearchPlaces: boolean;
+    stopDir?: string;
+    cache: boolean;
+    mergeImportArrays: boolean;
+    mergeSearchPlaces: boolean;
+    searchStrategy: SearchStrategy;
 }
-export interface LabColor {
-    l: number;
-    a: number;
-    b: number;
+/**
+ * @public
+ */
+export interface Options extends CommonOptions {
+    loaders: Loaders;
+    transform: Transform;
 }
-export interface LchColor {
-    l: number;
-    c: number;
-    h: number;
+/**
+ * @public
+ */
+export interface OptionsSync extends CommonOptions {
+    loaders: LoadersSync;
+    transform: TransformSync;
 }
-export interface CmykColor {
-    c: number;
-    m: number;
-    y: number;
-    k: number;
+/**
+ * @public
+ */
+export interface Loaders {
+    [key: string]: Loader;
 }
-declare type WithAlpha<O> = O & {
-    a: number;
-};
-export declare type RgbaColor = WithAlpha<RgbColor>;
-export declare type HslaColor = WithAlpha<HslColor>;
-export declare type HsvaColor = WithAlpha<HsvColor>;
-export declare type HwbaColor = WithAlpha<HwbColor>;
-export declare type XyzaColor = WithAlpha<XyzColor>;
-export declare type LabaColor = LabColor & {
-    alpha: number;
-};
-export declare type LchaColor = WithAlpha<LchColor>;
-export declare type CmykaColor = WithAlpha<CmykColor>;
-export declare type ObjectColor = RgbColor | RgbaColor | HslColor | HslaColor | HsvColor | HsvaColor | HwbColor | HwbaColor | XyzColor | XyzaColor | LabColor | LabaColor | LchColor | LchaColor | CmykColor | CmykaColor;
-export declare type AnyColor = string | ObjectColor;
-export declare type InputObject = Record<string, unknown>;
-export declare type Format = "name" | "hex" | "rgb" | "hsl" | "hsv" | "hwb" | "xyz" | "lab" | "lch" | "cmyk";
-export declare type Input = string | InputObject;
-export declare type ParseResult = [RgbaColor, Format];
-export declare type ParseFunction<I extends Input> = (input: I) => RgbaColor | null;
-export declare type Parser<I extends Input> = [ParseFunction<I>, Format];
-export declare type Parsers = {
-    string: Array<Parser<string>>;
-    object: Array<Parser<InputObject>>;
-};
-export {};
+/**
+ * @public
+ */
+export interface LoadersSync {
+    [key: string]: LoaderSync;
+}
+/**
+ * @public
+ */
+export interface PublicExplorerBase {
+    clearLoadCache: () => void;
+    clearSearchCache: () => void;
+    clearCaches: () => void;
+}
+/**
+ * @public
+ */
+export interface PublicExplorer extends PublicExplorerBase {
+    search: (searchFrom?: string) => Promise<CosmiconfigResult>;
+    load: (filepath: string) => Promise<CosmiconfigResult>;
+}
+/**
+ * @public
+ */
+export interface PublicExplorerSync extends PublicExplorerBase {
+    search: (searchFrom?: string) => CosmiconfigResult;
+    load: (filepath: string) => CosmiconfigResult;
+}
+//# sourceMappingURL=types.d.ts.map
